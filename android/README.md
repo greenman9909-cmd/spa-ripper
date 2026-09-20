@@ -2,24 +2,23 @@
 
 Native Android GUI for SPA-Ripper.
 
-## Features
+## Android v1.1 highlights
 
-- Website URL input
-- Recursive same-origin frontend cloning
-- HTML, CSS, JavaScript and JSON asset discovery
-- Images, fonts, video, audio, HLS playlists and subtitles
+- Redesigned dark card-based interface
+- Branded SPA-Ripper lightning launcher icon
+- **Clone frontend** and **Clone & run localhost** actions
+- Clear status card with progress indicator
+- Dedicated localhost controls
+- Auto-scrolling live activity console
+- Same recursive frontend discovery engine
 - Query-safe filenames for Next.js-style assets
-- Live clone log
-- Displays the final device output path
-- Copy-output-path button
+- Built-in localhost SPA fallback and HTTP Range support
 
 The app stores clones in its external app Downloads area, normally under:
 
 ```text
 /storage/emulated/0/Android/data/com.sparipper.mobile/files/Download/SPA-Ripper/<domain>_frontend
 ```
-
-No broad storage permission is required.
 
 ## Build locally
 
@@ -35,12 +34,10 @@ APK output:
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Build on GitHub
-
-Open the repository's **Actions** tab and run **Build Android APK**. The workflow uploads an artifact named:
+GitHub Actions also publishes the latest successful APK to the repository root as:
 
 ```text
-spa-ripper-android-debug
+SPA-Ripper.apk
 ```
 
 Use SPA-Ripper only on sites you own or have permission to archive.
