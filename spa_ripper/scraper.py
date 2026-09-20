@@ -48,7 +48,7 @@ CSS_URL_REGEX = re.compile(
 # res.json() and response.json() while still catching import(), new URL(),
 # media files, manifests, subtitles, and other runtime asset references.
 JS_STRING_LITERAL_REGEX = re.compile(
-    r"""["'`]([^"'\`\\r\\n]+)["'`]""",
+    r"""["'`]([^"'`\r\n]+)["'`]""",
     re.IGNORECASE,
 )
 
