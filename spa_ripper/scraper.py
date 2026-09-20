@@ -43,9 +43,11 @@ CSS_URL_REGEX = re.compile(
     re.IGNORECASE
 )
 
-# Regex for modern bundler chunks (Vite, Webpack, Rollup, Turbopack)
+# Regex for modern bundler chunks (Vite, Webpack, Rollup, Turbopack).
+# The trailing negative lookahead prevents partial matches such as
+# "config.json" being backtracked into the invalid "config.js".
 JS_CHUNK_REGEX = re.compile(
-    r"""(?:["'`/]|(?:\b))([a-zA-Z0-9_\-\.\/]+\.(?:js|css|woff2?|ttf|eot|png|webp|svg|ico|json))""",
+    r"""((?:https?://)?(?:[./]|[a-zA-Z0-9_-])[a-zA-Z0-9_./:@%+\-]*\.(?:js|css|woff2?|ttf|eot|png|webp|svg|ico|json))(?![a-zA-Z0-9])""",
     re.IGNORECASE
 )
 
@@ -82,11 +84,10 @@ class SpaScraper:
         self.failed_urls: List[tuple] = []
 
     def normalize_url(self, raw_url: str, context_url: str) -> str:
-        """Resolve relative URLs, remove hash fragments and query strings for asset matching."""
+        """Resolve relative URLs and remove hash fragments while preserving query strings."""
         joined = urljoin(context_url, raw_url.strip())
         parsed = urlparse(joined)
-        clean = parsed._replace(query="", fragment="").geturl()
-        return clean
+        return parsed._replace(fragment="").geturl()
 
     def url_to_local_path(self, target_url: str) -> str:
         """Translate a target URL to a safe relative path in output_dir."""
@@ -134,11 +135,15 @@ class SpaScraper:
 
     def extract_js_assets(self, js: str) -> Set[str]:
         found = set()
+        allowed_extensions = (
+            ".js", ".css", ".woff2", ".woff", ".ttf", ".eot",
+            ".png", ".webp", ".svg", ".ico", ".json",
+        )
         for match in JS_CHUNK_REGEX.findall(js):
-            clean = match.strip().lstrip("/")
-            # Filter common false positives
-            if any(clean.endswith(ext) for ext in (".js", ".css", ".woff2", ".woff", ".webp", ".png", ".svg")):
-                found.add("/" + clean)
+            clean = match.strip()
+            path_only = urlparse(clean).path.lower()
+            if path_only.endswith(allowed_extensions):
+                found.add(clean)
         return found
 
     def extract_json_assets(self, json_text: str) -> Set[str]:
@@ -222,8 +227,8 @@ class SpaScraper:
                 elif local_path.lower().endswith(".js") or "javascript" in content_type:
                     js_text = content.decode("utf-8", errors="ignore")
                     for js_asset in self.extract_js_assets(js_text):
-                        # Chunk paths in JS are typically root-relative
-                        self.enqueue(js_asset, self.base_url)
+                        # Preserve relative imports by resolving against the current bundle.
+                        self.enqueue(js_asset, current_url)
 
                 # Deep scan Web Manifest and JSON configs
                 elif local_path.lower().endswith((".webmanifest", ".json")) or "json" in content_type:
