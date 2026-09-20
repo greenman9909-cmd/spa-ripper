@@ -53,6 +53,16 @@ class SpaScraperRegressionTests(unittest.TestCase):
         self.assertNotIn("response.json", assets)
         self.assertIn("yoru-backup.json", assets)
 
+    def test_dynamic_templates_and_bare_extensions_are_ignored(self):
+        assets = self.make_scraper().extract_js_assets(
+            'const dynamic = `assets/${t.id}.jpg`; '
+            'const suffix = ".jpg"; '
+            'const real = "assets/hero.jpg";'
+        )
+        self.assertNotIn("assets/${t.id}.jpg", assets)
+        self.assertNotIn(".jpg", assets)
+        self.assertIn("assets/hero.jpg", assets)
+
     def test_relative_chunk_resolves_against_current_bundle(self):
         scraper = self.make_scraper()
         url = scraper.normalize_url(
