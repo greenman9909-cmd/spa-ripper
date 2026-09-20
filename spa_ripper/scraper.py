@@ -43,12 +43,22 @@ CSS_URL_REGEX = re.compile(
     re.IGNORECASE
 )
 
-# Regex for modern bundler chunks (Vite, Webpack, Rollup, Turbopack).
-# The trailing negative lookahead prevents partial matches such as
-# "config.json" being backtracked into the invalid "config.js".
-JS_CHUNK_REGEX = re.compile(
-    r"""((?:https?://)?(?:[./]|[a-zA-Z0-9_-])[a-zA-Z0-9_./:@%+\-]*\.(?:js|css|woff2?|ttf|eot|png|webp|svg|ico|json))(?![a-zA-Z0-9])""",
-    re.IGNORECASE
+# JavaScript string-literal detection for bundled assets.
+# Restricting discovery to quoted strings avoids false positives such as
+# res.json() and response.json() while still catching import(), new URL(),
+# media files, manifests, subtitles, and other runtime asset references.
+JS_STRING_LITERAL_REGEX = re.compile(
+    r"""["'`]([^"'\`\\r\\n]+)["'`]""",
+    re.IGNORECASE,
+)
+
+JS_ASSET_EXTENSIONS = (
+    ".js", ".mjs", ".cjs", ".css", ".json",
+    ".woff2", ".woff", ".ttf", ".eot",
+    ".png", ".jpg", ".jpeg", ".webp", ".avif", ".gif", ".svg", ".ico",
+    ".mp4", ".webm", ".mov", ".m3u8",
+    ".mp3", ".ogg", ".wav", ".m4a",
+    ".vtt", ".srt",
 )
 
 # JSON schema / manifest icon regex
@@ -135,15 +145,15 @@ class SpaScraper:
 
     def extract_js_assets(self, js: str) -> Set[str]:
         found = set()
-        allowed_extensions = (
-            ".js", ".css", ".woff2", ".woff", ".ttf", ".eot",
-            ".png", ".webp", ".svg", ".ico", ".json",
-        )
-        for match in JS_CHUNK_REGEX.findall(js):
+        for match in JS_STRING_LITERAL_REGEX.findall(js):
             clean = match.strip()
+            if clean.startswith(("data:", "javascript:", "mailto:", "tel:", "#")):
+                continue
+
             path_only = urlparse(clean).path.lower()
-            if path_only.endswith(allowed_extensions):
+            if path_only.endswith(JS_ASSET_EXTENSIONS):
                 found.add(clean)
+
         return found
 
     def extract_json_assets(self, json_text: str) -> Set[str]:
