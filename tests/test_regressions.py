@@ -6,6 +6,7 @@ from http.server import ThreadingHTTPServer
 from urllib.request import urlopen
 
 from spa_ripper.scraper import SpaScraper
+from spa_ripper.path_utils import query_variant_relpath
 from spa_ripper.server import SpaDevServer
 
 
@@ -85,6 +86,28 @@ class SpaScraperRegressionTests(unittest.TestCase):
             "https://example.com/app.js?v=42",
         )
 
+    def test_next_image_query_variants_get_unique_paths(self):
+        scraper = self.make_scraper()
+        first = scraper.url_to_local_path(
+            "https://example.com/_next/image?url=a.jpg&w=640&q=75"
+        )
+        second = scraper.url_to_local_path(
+            "https://example.com/_next/image?url=b.jpg&w=640&q=75"
+        )
+        self.assertNotEqual(first, second)
+        self.assertIn("_next", first)
+        self.assertIn("image__q_", first)
+
+    def test_html_entities_are_decoded_in_next_image_srcset(self):
+        assets = self.make_scraper().extract_html_assets(
+            '<img src="/_next/image?url=a.jpg&amp;w=640&amp;q=75" '
+            'srcset="/_next/image?url=a.jpg&amp;w=640&amp;q=75 1x, '
+            '/_next/image?url=a.jpg&amp;w=1280&amp;q=75 2x">',
+            "https://example.com/",
+        )
+        self.assertIn("/_next/image?url=a.jpg&w=640&q=75", assets)
+        self.assertIn("/_next/image?url=a.jpg&w=1280&q=75", assets)
+
     def test_enqueue_rejects_cross_origin_assets(self):
         scraper = self.make_scraper()
         scraper.enqueue(
@@ -111,6 +134,16 @@ class SpaDevServerRegressionTests(unittest.TestCase):
             encoding="utf-8",
         ) as handle:
             handle.write("STATIC ASSET")
+
+        for query, content in (
+            ("url=a.jpg&w=640&q=75", "NEXT IMAGE A"),
+            ("url=b.jpg&w=640&q=75", "NEXT IMAGE B"),
+        ):
+            rel = query_variant_relpath("/_next/image?" + query)
+            full = os.path.join(self.tempdir.name, rel)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w", encoding="utf-8") as handle:
+                handle.write(content)
 
         app = SpaDevServer(
             self.tempdir.name,
@@ -145,6 +178,19 @@ class SpaDevServerRegressionTests(unittest.TestCase):
                 response.read().decode(),
                 "STATIC ASSET",
             )
+
+    def test_query_specific_next_images_are_served_separately(self):
+        with urlopen(
+            self.base + "/_next/image?url=a.jpg&w=640&q=75",
+            timeout=2,
+        ) as response:
+            self.assertEqual(response.read().decode(), "NEXT IMAGE A")
+
+        with urlopen(
+            self.base + "/_next/image?url=b.jpg&w=640&q=75",
+            timeout=2,
+        ) as response:
+            self.assertEqual(response.read().decode(), "NEXT IMAGE B")
 
     def test_client_route_falls_back_to_index(self):
         with urlopen(
