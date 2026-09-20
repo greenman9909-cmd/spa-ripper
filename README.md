@@ -73,6 +73,45 @@ python run.py serve ./ani_frontend -p 8080 --proxy http://127.0.0.1:8000
 
 ---
 
+## 🖥️ Desktop GUI
+
+Run SPA-Ripper with a graphical interface:
+
+```bash
+python run.py
+```
+
+or explicitly:
+
+```bash
+python run.py --gui
+```
+
+The GUI asks for the website URL and output folder, streams the clone log live, prints the final download path, and can open the output folder when finished.
+
+---
+
+## 📱 Android App / APK
+
+A native Android version is included under `android/`. It provides a URL field, **Clone Frontend** button, live progress log, query-safe asset saving, and the final on-device output path.
+
+GitHub automatically builds a debug APK using **Actions → Build Android APK**. Download the `spa-ripper-android-debug` artifact and install `app-debug.apk`.
+
+Android source:
+
+```text
+android/
+├── app/
+│   └── src/main/java/com/sparipper/mobile/
+│       ├── MainActivity.java
+│       └── SpaRipperEngine.java
+└── README.md
+```
+
+The Android app stores cloned frontends in its app-specific Downloads area and does not require broad storage access.
+
+---
+
 ## 📂 Project Structure
 
 ```
@@ -82,7 +121,9 @@ spa-ripper/
 │   ├── scraper.py     # Recursive SPA & dynamic chunk extraction engine
 │   ├── server.py      # Threaded SPA server with fallback & API reverse proxy
 │   └── cli.py         # Command-line interface
-├── run.py             # Top-level quick runner script
+├── gui.py             # Tkinter desktop GUI
+├── android/            # Native Android app + APK build project
+├── run.py             # GUI launcher / CLI entry point
 ├── requirements.txt   # Minimal dependencies (requests)
 ├── pyproject.toml     # Packaging metadata
 └── README.md          # Documentation
