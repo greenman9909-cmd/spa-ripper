@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spa-ripper"
+version = "1.0.0"
+description = "Fast, recursive Single Page Application (SPA) frontend cloner with dynamic Vite/Webpack chunk discovery and local SPA server"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+spa-ripper = "spa_ripper.cli:main"
