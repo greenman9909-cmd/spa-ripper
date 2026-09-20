@@ -150,7 +150,18 @@ class SpaScraper:
             if clean.startswith(("data:", "javascript:", "mailto:", "tel:", "#")):
                 continue
 
+            # Runtime template placeholders cannot be resolved statically.
+            if "${" in clean:
+                continue
+
             path_only = urlparse(clean).path.lower()
+            filename = os.path.basename(path_only)
+            stem, _ = os.path.splitext(filename)
+
+            # Ignore fragments such as ".jpg" from string concatenation.
+            if not stem:
+                continue
+
             if path_only.endswith(JS_ASSET_EXTENSIONS):
                 found.add(clean)
 
