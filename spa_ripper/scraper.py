@@ -1,9 +1,12 @@
 import os
 import re
 import sys
-from urllib.parse import urljoin, urlparse, unquote
+from html import unescape
+from urllib.parse import urljoin, urlparse
 from typing import Set, List, Optional
 import requests
+
+from spa_ripper.path_utils import query_variant_relpath
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -100,18 +103,11 @@ class SpaScraper:
         return parsed._replace(fragment="").geturl()
 
     def url_to_local_path(self, target_url: str) -> str:
-        """Translate a target URL to a safe relative path in output_dir."""
-        parsed = urlparse(target_url)
-        decoded = unquote(parsed.path).lstrip("/")
-        if not decoded:
-            decoded = "index.html"
-
-        # Prevent directory traversal
-        norm = os.path.normpath(decoded)
-        if norm.startswith("..") or os.path.isabs(norm):
-            norm = norm.replace("..", "").lstrip(os.sep)
-
-        return os.path.join(self.output_dir, norm)
+        """Translate a target URL to a collision-safe path in output_dir."""
+        return os.path.join(
+            self.output_dir,
+            query_variant_relpath(target_url),
+        )
 
     def enqueue(self, url: str, context_url: str):
         clean_url = self.normalize_url(url, context_url)
@@ -125,12 +121,14 @@ class SpaScraper:
     def extract_html_assets(self, html: str, context_url: str) -> Set[str]:
         found = set()
         for attr in HTML_ATTR_REGEX.findall(html):
-            if not attr.startswith(("data:", "javascript:", "mailto:", "tel:")):
-                found.add(attr)
+            clean = unescape(attr.strip())
+            if not clean.startswith(("data:", "javascript:", "mailto:", "tel:")):
+                found.add(clean)
 
-        # Extract items from srcset="img1.jpg 1x, img2.jpg 2x"
+        # Extract items from srcset/imagesrcset and decode HTML entities.
         for srcset in SRCSET_REGEX.findall(html):
-            parts = [p.strip().split()[0] for p in srcset.split(",") if p.strip()]
+            decoded = unescape(srcset)
+            parts = [p.strip().split()[0] for p in decoded.split(",") if p.strip()]
             found.update(parts)
 
         return found
