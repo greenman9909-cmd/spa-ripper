@@ -1,0 +1,2 @@
+@font-face { font-family: Demo; src: url('../fonts/test.woff2'); }
+body { background-image: url('../images/bg.webp'); font-family: Demo; }
