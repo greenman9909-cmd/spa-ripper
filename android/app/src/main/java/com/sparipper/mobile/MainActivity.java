@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -20,10 +22,16 @@ public class MainActivity extends Activity {
     private EditText urlInput;
     private Button cloneButton;
     private Button copyPathButton;
+    private Button startServerButton;
+    private Button openSiteButton;
+    private Button stopServerButton;
     private ProgressBar progressBar;
     private TextView statusText;
     private TextView logText;
+
     private String lastOutputPath;
+    private File lastOutputDir;
+    private LocalSpaServer localServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +48,7 @@ public class MainActivity extends Activity {
         root.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Clone modern SPA frontends directly on Android.");
+        subtitle.setText("Clone and run modern SPA frontends directly on Android.");
         subtitle.setTextSize(14);
         subtitle.setPadding(0, dp(4), 0, dp(12));
         root.addView(subtitle);
@@ -63,23 +71,62 @@ public class MainActivity extends Activity {
             )
         );
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setPadding(0, dp(10), 0, dp(10));
+        LinearLayout cloneActions = new LinearLayout(this);
+        cloneActions.setOrientation(LinearLayout.HORIZONTAL);
+        cloneActions.setPadding(0, dp(10), 0, dp(6));
 
         cloneButton = new Button(this);
         cloneButton.setText("Clone Frontend");
-        actions.addView(
+        cloneActions.addView(
             cloneButton,
-            new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
         );
 
         copyPathButton = new Button(this);
         copyPathButton.setText("Copy Path");
         copyPathButton.setEnabled(false);
-        actions.addView(copyPathButton);
+        cloneActions.addView(copyPathButton);
 
-        root.addView(actions);
+        root.addView(cloneActions);
+
+        LinearLayout serverActions = new LinearLayout(this);
+        serverActions.setOrientation(LinearLayout.HORIZONTAL);
+        serverActions.setPadding(0, 0, 0, dp(10));
+
+        startServerButton = new Button(this);
+        startServerButton.setText("Start Localhost");
+        startServerButton.setEnabled(false);
+        serverActions.addView(
+            startServerButton,
+            new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        );
+
+        openSiteButton = new Button(this);
+        openSiteButton.setText("Open Site");
+        openSiteButton.setEnabled(false);
+        serverActions.addView(
+            openSiteButton,
+            new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        );
+
+        stopServerButton = new Button(this);
+        stopServerButton.setText("Stop");
+        stopServerButton.setEnabled(false);
+        serverActions.addView(stopServerButton);
+
+        root.addView(serverActions);
 
         progressBar = new ProgressBar(this);
         progressBar.setIndeterminate(true);
@@ -112,6 +159,9 @@ public class MainActivity extends Activity {
 
         cloneButton.setOnClickListener(v -> startClone());
         copyPathButton.setOnClickListener(v -> copyOutputPath());
+        startServerButton.setOnClickListener(v -> startLocalhost());
+        openSiteButton.setOnClickListener(v -> openLocalhost());
+        stopServerButton.setOnClickListener(v -> stopLocalhost());
     }
 
     private void startClone() {
@@ -121,12 +171,18 @@ public class MainActivity extends Activity {
             return;
         }
 
+        stopLocalhost();
+
         cloneButton.setEnabled(false);
         copyPathButton.setEnabled(false);
+        startServerButton.setEnabled(false);
+        openSiteButton.setEnabled(false);
+        stopServerButton.setEnabled(false);
         progressBar.setVisibility(View.VISIBLE);
         statusText.setText("Cloning…");
         logText.setText("");
         lastOutputPath = null;
+        lastOutputDir = null;
 
         SpaRipperEngine engine = new SpaRipperEngine(this);
 
@@ -141,15 +197,23 @@ public class MainActivity extends Activity {
                     @Override
                     public void onDone(File outputDir, int files, int failures) {
                         runOnUiThread(() -> {
+                            lastOutputDir = outputDir;
                             lastOutputPath = outputDir.getAbsolutePath();
                             progressBar.setVisibility(View.GONE);
                             cloneButton.setEnabled(true);
                             copyPathButton.setEnabled(true);
+                            startServerButton.setEnabled(true);
+
                             statusText.setText(
                                 "Done — " + files + " files, " + failures +
                                 " failed\nOutput: " + lastOutputPath
                             );
-                            appendLog("\n[✓] Clone complete\n[✓] " + lastOutputPath + "\n");
+
+                            appendLog(
+                                "\n[✓] Clone complete\n" +
+                                "[✓] " + lastOutputPath + "\n" +
+                                "[*] Tap Start Localhost to run it on your phone.\n"
+                            );
                         });
                     }
 
@@ -179,6 +243,88 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private void startLocalhost() {
+        if (lastOutputDir == null || !lastOutputDir.exists()) {
+            Toast.makeText(this, "Clone a frontend first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            if (localServer != null && localServer.isRunning()) {
+                openLocalhost();
+                return;
+            }
+
+            localServer = new LocalSpaServer(lastOutputDir);
+            String url = localServer.start();
+
+            startServerButton.setEnabled(false);
+            openSiteButton.setEnabled(true);
+            stopServerButton.setEnabled(true);
+
+            statusText.setText(
+                "Localhost running\n" +
+                url + "\n" +
+                "Serving: " + lastOutputDir.getAbsolutePath()
+            );
+
+            appendLog(
+                "\n[✓] Localhost started\n" +
+                "[✓] " + url + "\n"
+            );
+
+            Toast.makeText(
+                this,
+                "Localhost started on " + url,
+                Toast.LENGTH_SHORT
+            ).show();
+        } catch (Exception ex) {
+            appendLog("\n[!] Localhost error: " + ex.getMessage() + "\n");
+            Toast.makeText(
+                this,
+                "Could not start localhost: " + ex.getMessage(),
+                Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    private void openLocalhost() {
+        if (localServer == null || !localServer.isRunning()) {
+            Toast.makeText(this, "Start localhost first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            Intent intent = new Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(localServer.getUrl())
+            );
+            startActivity(intent);
+        } catch (Exception ex) {
+            Toast.makeText(
+                this,
+                "Could not open browser.",
+                Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
+    private void stopLocalhost() {
+        if (localServer != null) {
+            boolean wasRunning = localServer.isRunning();
+            localServer.stop();
+            localServer = null;
+
+            if (wasRunning) {
+                appendLog("\n[*] Localhost stopped\n");
+            }
+        }
+
+        openSiteButton.setEnabled(false);
+        stopServerButton.setEnabled(false);
+        startServerButton.setEnabled(lastOutputDir != null && lastOutputDir.exists());
+    }
+
     private void appendLog(String text) {
         logText.append(text);
     }
@@ -194,6 +340,15 @@ public class MainActivity extends Activity {
             ClipData.newPlainText("SPA-Ripper output", lastOutputPath)
         );
         Toast.makeText(this, "Output path copied.", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (localServer != null) {
+            localServer.stop();
+            localServer = null;
+        }
+        super.onDestroy();
     }
 
     private int dp(int value) {
