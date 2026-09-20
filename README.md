@@ -17,7 +17,7 @@ Traditional tools like `wget -m` or standard HTML scrapers fail on modern Single
 
 ## 🚀 Features
 
-- 🔍 **Recursive Dynamic Chunk Discovery**: Scans compiled `.js` files with regex patterns to extract and download all lazy-loaded bundles and dynamic imports.
+- 🔍 **Recursive Dynamic Asset Discovery**: Scans JavaScript string literals to extract lazy-loaded bundles, images, fonts, JSON, video/audio media, HLS playlists, and subtitle files while avoiding method-call false positives such as `res.json()`.
 - 🎨 **Deep CSS Asset Extraction**: Parses `url(...)` declarations to capture `@font-face` woff2/woff fonts and images.
 - 📱 **PWA Manifest & Worker Support**: Automatically extracts icons, manifests, and enqueues service workers.
 - ⚡ **Zero Heavy Dependencies**: Pure Python using only `requests`. No BeautifulSoup, no Selenium, no Playwright required.
