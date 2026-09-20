@@ -32,7 +32,7 @@ Traditional tools like `wget -m` or standard HTML scrapers fail on modern Single
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/yourusername/spa-ripper.git
+git clone https://github.com/greenman9909-cmd/spa-ripper.git
 cd spa-ripper
 
 pip install -r requirements.txt
