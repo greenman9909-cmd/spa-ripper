@@ -159,7 +159,7 @@ class SpaScraper:
             stem, _ = os.path.splitext(filename)
 
             # Ignore fragments such as ".jpg" from string concatenation.
-            if not stem:
+            if not stem or filename in JS_ASSET_EXTENSIONS:
                 continue
 
             if path_only.endswith(JS_ASSET_EXTENSIONS):
