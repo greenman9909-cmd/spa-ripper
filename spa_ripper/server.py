@@ -5,6 +5,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 import requests
 
+from spa_ripper.path_utils import query_variant_relpath
+
 
 class SpaDevServer:
     """Generic local server for a cloned SPA with optional API reverse proxying."""
@@ -48,8 +50,12 @@ class SpaDevServer:
                     self.proxy_request("GET")
                     return
 
-                req_path = self.translate_path(self.path)
-                if os.path.exists(req_path) and not os.path.isdir(req_path):
+                # Query-bearing assets (notably Next.js /_next/image) are
+                # stored under deterministic query-specific local filenames.
+                local_rel = query_variant_relpath(self.path)
+                local_file = os.path.join(root_dir, local_rel)
+                if os.path.exists(local_file) and not os.path.isdir(local_file):
+                    self.path = "/" + local_rel.replace(os.sep, "/")
                     return super().do_GET()
 
                 if not os.path.splitext(self.path.split("?", 1)[0])[1]:
