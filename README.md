@@ -40,6 +40,55 @@ pip install -r requirements.txt
 
 ---
 
+## 🌐 Web App
+
+SPA-Ripper now includes a full browser-based console with a responsive dark UI.
+
+Run it locally:
+
+```bash
+pip install -r requirements.txt
+python web_app.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:7860
+```
+
+The web console includes:
+
+- Website URL input with server-side validation
+- Live clone status and logs
+- File / byte / failure counters
+- Recent clone history for the current server session
+- Built-in SPA preview
+- One-click ZIP download
+- SSRF protection that blocks private, loopback, link-local, multicast, reserved, and unspecified targets by default
+- Query-safe preview handling for Next.js-style assets
+
+For trusted local development only, private-network targets can be enabled with:
+
+```bash
+SPA_RIPPER_ALLOW_PRIVATE=1 python web_app.py
+```
+
+### Docker
+
+```bash
+docker build -t spa-ripper-web .
+docker run --rm -p 7860:7860 spa-ripper-web
+```
+
+### Render
+
+A `render.yaml` blueprint and `Dockerfile` are included. Import the repository into Render and deploy the `spa-ripper-web` service.
+
+> Public deployments should keep `SPA_RIPPER_ALLOW_PRIVATE=0`.
+
+---
+
 ## 💻 Usage
 
 ### 1. Clone a Target Frontend
@@ -121,10 +170,14 @@ spa-ripper/
 │   ├── scraper.py     # Recursive SPA & dynamic chunk extraction engine
 │   ├── server.py      # Threaded SPA server with fallback & API reverse proxy
 │   └── cli.py         # Command-line interface
+├── web_app.py         # Flask web console + clone API
+├── web/               # Responsive web UI assets/templates
 ├── gui.py             # Tkinter desktop GUI
 ├── android/            # Native Android app + APK build project
+├── Dockerfile         # Containerized web deployment
+├── render.yaml        # Render blueprint
 ├── run.py             # GUI launcher / CLI entry point
-├── requirements.txt   # Minimal dependencies (requests)
+├── requirements.txt   # Python + web dependencies
 ├── pyproject.toml     # Packaging metadata
 └── README.md          # Documentation
 ```
