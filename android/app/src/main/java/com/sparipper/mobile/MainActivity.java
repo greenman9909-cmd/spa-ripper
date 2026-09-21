@@ -1,6 +1,7 @@
 package com.sparipper.mobile;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -24,7 +25,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
+
 import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class MainActivity extends Activity {
     private static final int BG = Color.rgb(8, 12, 18);
@@ -39,10 +44,17 @@ public class MainActivity extends Activity {
     private static final int SUCCESS = Color.rgb(34, 197, 94);
     private static final int DISABLED = Color.rgb(42, 51, 65);
 
+    private static final int REQ_SAVE_ZIP = 4101;
+    private static final int REQ_EXPORT_FOLDER = 4102;
+    private static final int REQ_SAVE_FILE = 4103;
+
     private EditText urlInput;
     private Button cloneButton;
     private Button cloneRunButton;
     private Button copyPathButton;
+    private Button browseFilesButton;
+    private Button extractFolderButton;
+    private Button saveZipButton;
     private Button startServerButton;
     private Button openSiteButton;
     private Button stopServerButton;
@@ -54,6 +66,8 @@ public class MainActivity extends Activity {
 
     private String lastOutputPath;
     private File lastOutputDir;
+    private File pendingZipFile;
+    private File pendingSingleFile;
     private LocalSpaServer localServer;
     private boolean autoRunAfterClone;
 
@@ -102,7 +116,7 @@ public class MainActivity extends Activity {
         titles.setOrientation(LinearLayout.VERTICAL);
 
         TextView title = label("SPA-Ripper", 27, TEXT, Typeface.BOLD);
-        TextView subtitle = label("Clone • inspect • run locally", 13, MUTED, Typeface.NORMAL);
+        TextView subtitle = label("Clone • inspect • export • run locally", 13, MUTED, Typeface.NORMAL);
         subtitle.setPadding(0, dp(3), 0, 0);
 
         titles.addView(title);
@@ -116,7 +130,7 @@ public class MainActivity extends Activity {
             )
         );
 
-        TextView badge = label("v1.1", 11, ACCENT, Typeface.BOLD);
+        TextView badge = label("v1.2", 11, ACCENT, Typeface.BOLD);
         badge.setGravity(Gravity.CENTER);
         badge.setPadding(dp(10), dp(6), dp(10), dp(6));
         badge.setBackground(roundRect(Color.rgb(12, 54, 51), 99, 1, ACCENT_DARK));
@@ -189,7 +203,7 @@ public class MainActivity extends Activity {
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView section = label("STATUS", 11, MUTED, Typeface.BOLD);
+        TextView section = label("CLONE OUTPUT", 11, MUTED, Typeface.BOLD);
         top.addView(
             section,
             new LinearLayout.LayoutParams(
@@ -229,6 +243,39 @@ public class MainActivity extends Activity {
         );
         progressParams.topMargin = dp(14);
         card.addView(progressBar, progressParams);
+
+        LinearLayout fileActions = new LinearLayout(this);
+        fileActions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams fileActionParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        fileActionParams.topMargin = dp(14);
+
+        browseFilesButton = actionButton("Browse", SURFACE_2, TEXT);
+        extractFolderButton = actionButton("Extract", SURFACE_2, TEXT);
+        saveZipButton = actionButton("Save ZIP", SURFACE_2, TEXT);
+        browseFilesButton.setEnabled(false);
+        extractFolderButton.setEnabled(false);
+        saveZipButton.setEnabled(false);
+
+        fileActions.addView(browseFilesButton, weightedButtonParams(1f, 0));
+        fileActions.addView(extractFolderButton, weightedButtonParams(1f, dp(8)));
+        fileActions.addView(saveZipButton, weightedButtonParams(1f, dp(8)));
+        card.addView(fileActions, fileActionParams);
+
+        TextView outputHint = label(
+            "Browse opens the real cloned files. Extract and Save ZIP let you choose a normal folder in Android Files.",
+            11,
+            MUTED,
+            Typeface.NORMAL
+        );
+        outputHint.setPadding(0, dp(9), 0, 0);
+        card.addView(outputHint);
+
+        browseFilesButton.setOnClickListener(v -> browseCloneFiles());
+        extractFolderButton.setOnClickListener(v -> chooseExtractDestination());
+        saveZipButton.setOnClickListener(v -> prepareZipExport());
 
         return card;
     }
@@ -337,7 +384,7 @@ public class MainActivity extends Activity {
         stopLocalhost();
 
         setCloneControlsEnabled(false);
-        copyPathButton.setEnabled(false);
+        setOutputActionsEnabled(false);
         startServerButton.setEnabled(false);
         openSiteButton.setEnabled(false);
         stopServerButton.setEnabled(false);
@@ -348,6 +395,8 @@ public class MainActivity extends Activity {
         logText.setText("");
         lastOutputPath = null;
         lastOutputDir = null;
+        pendingZipFile = null;
+        pendingSingleFile = null;
 
         SpaRipperEngine engine = new SpaRipperEngine(this);
 
@@ -366,19 +415,20 @@ public class MainActivity extends Activity {
                             lastOutputPath = outputDir.getAbsolutePath();
                             progressBar.setVisibility(View.GONE);
                             setCloneControlsEnabled(true);
-                            copyPathButton.setEnabled(true);
+                            setOutputActionsEnabled(true);
                             startServerButton.setEnabled(true);
 
                             statusTitle.setText("Clone complete");
                             statusTitle.setTextColor(SUCCESS);
                             statusText.setText(
                                 files + " files saved • " + failures + " failed\n" +
-                                lastOutputPath
+                                "Tap Browse, Extract, or Save ZIP below."
                             );
 
                             appendLog(
                                 "\n[✓] Clone complete\n" +
-                                "[✓] " + lastOutputPath + "\n"
+                                "[✓] Private working folder: " + lastOutputPath + "\n" +
+                                "[✓] Use Browse / Extract / Save ZIP to access the files.\n"
                             );
 
                             if (autoRunAfterClone) {
@@ -395,6 +445,7 @@ public class MainActivity extends Activity {
                         runOnUiThread(() -> {
                             progressBar.setVisibility(View.GONE);
                             setCloneControlsEnabled(true);
+                            setOutputActionsEnabled(false);
                             statusTitle.setText("Clone failed");
                             statusTitle.setTextColor(DANGER);
                             statusText.setText(message);
@@ -411,6 +462,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     setCloneControlsEnabled(true);
+                    setOutputActionsEnabled(false);
                     statusTitle.setText("Clone failed");
                     statusTitle.setTextColor(DANGER);
                     statusText.setText(ex.getMessage());
@@ -426,8 +478,269 @@ public class MainActivity extends Activity {
         urlInput.setEnabled(enabled);
     }
 
+    private void setOutputActionsEnabled(boolean enabled) {
+        copyPathButton.setEnabled(enabled);
+        browseFilesButton.setEnabled(enabled);
+        extractFolderButton.setEnabled(enabled);
+        saveZipButton.setEnabled(enabled);
+    }
+
+    private void browseCloneFiles() {
+        if (!hasClone()) {
+            Toast.makeText(this, "Clone a frontend first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        browseDirectory(lastOutputDir);
+    }
+
+    private void browseDirectory(File directory) {
+        File[] children = directory.listFiles();
+        if (children == null) {
+            Toast.makeText(this, "Could not read this folder.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Arrays.sort(children, Comparator
+            .comparing((File file) -> !file.isDirectory())
+            .thenComparing(file -> file.getName().toLowerCase()));
+
+        String[] labels = new String[children.length];
+        for (int i = 0; i < children.length; i++) {
+            File child = children[i];
+            labels[i] = child.isDirectory()
+                ? "📁  " + child.getName()
+                : "📄  " + child.getName() + "  •  " + CloneExportUtils.humanSize(child.length());
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+            .setTitle(relativeTitle(directory))
+            .setItems(labels, (dialog, which) -> {
+                File selected = children[which];
+                if (selected.isDirectory()) {
+                    browseDirectory(selected);
+                } else {
+                    showFileActions(selected);
+                }
+            })
+            .setNegativeButton("Close", null);
+
+        if (!sameFile(directory, lastOutputDir)) {
+            builder.setNeutralButton("Up", (dialog, which) -> {
+                File parent = directory.getParentFile();
+                if (parent != null && isInsideClone(parent)) {
+                    browseDirectory(parent);
+                }
+            });
+        }
+
+        if (children.length == 0) {
+            builder.setMessage("This folder is empty.");
+        }
+
+        builder.show();
+    }
+
+    private void showFileActions(File file) {
+        String[] actions = {"Open file", "Save a copy", "Copy path"};
+        new AlertDialog.Builder(this)
+            .setTitle(file.getName())
+            .setMessage(
+                CloneExportUtils.humanSize(file.length()) + "\n" +
+                relativePath(file)
+            )
+            .setItems(actions, (dialog, which) -> {
+                if (which == 0) {
+                    openFile(file);
+                } else if (which == 1) {
+                    chooseSingleFileDestination(file);
+                } else {
+                    copyText("SPA-Ripper file", file.getAbsolutePath(), "File path copied.");
+                }
+            })
+            .setNegativeButton("Close", null)
+            .show();
+    }
+
+    private void openFile(File file) {
+        try {
+            Uri uri = FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".files",
+                file
+            );
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, CloneExportUtils.mimeFor(file));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Open " + file.getName()));
+        } catch (Exception ex) {
+            Toast.makeText(
+                this,
+                "No app could open this file. Use Save a copy instead.",
+                Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    private void chooseSingleFileDestination(File file) {
+        pendingSingleFile = file;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(CloneExportUtils.mimeFor(file));
+        intent.putExtra(Intent.EXTRA_TITLE, file.getName());
+        startActivityForResult(intent, REQ_SAVE_FILE);
+    }
+
+    private void chooseExtractDestination() {
+        if (!hasClone()) {
+            Toast.makeText(this, "Clone a frontend first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION |
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+            Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+        );
+        startActivityForResult(intent, REQ_EXPORT_FOLDER);
+    }
+
+    private void prepareZipExport() {
+        if (!hasClone()) {
+            Toast.makeText(this, "Clone a frontend first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        saveZipButton.setEnabled(false);
+        statusTitle.setText("Preparing ZIP…");
+        statusTitle.setTextColor(ACCENT);
+
+        new Thread(() -> {
+            try {
+                File zip = CloneExportUtils.createZip(this, lastOutputDir);
+                runOnUiThread(() -> {
+                    pendingZipFile = zip;
+                    saveZipButton.setEnabled(true);
+                    statusTitle.setText("ZIP ready");
+                    statusTitle.setTextColor(SUCCESS);
+
+                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("application/zip");
+                    intent.putExtra(Intent.EXTRA_TITLE, lastOutputDir.getName() + ".zip");
+                    startActivityForResult(intent, REQ_SAVE_ZIP);
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    saveZipButton.setEnabled(true);
+                    statusTitle.setText("ZIP export failed");
+                    statusTitle.setTextColor(DANGER);
+                    statusText.setText(ex.getMessage());
+                    Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+
+        Uri destination = data.getData();
+
+        if (requestCode == REQ_SAVE_ZIP && pendingZipFile != null) {
+            File zip = pendingZipFile;
+            pendingZipFile = null;
+            copyFileToChosenUri(zip, destination, "ZIP saved");
+            return;
+        }
+
+        if (requestCode == REQ_SAVE_FILE && pendingSingleFile != null) {
+            File source = pendingSingleFile;
+            pendingSingleFile = null;
+            copyFileToChosenUri(source, destination, "File saved");
+            return;
+        }
+
+        if (requestCode == REQ_EXPORT_FOLDER && hasClone()) {
+            try {
+                getContentResolver().takePersistableUriPermission(
+                    destination,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                );
+            } catch (Exception ignored) {
+            }
+            exportFolderToTree(destination);
+        }
+    }
+
+    private void copyFileToChosenUri(File source, Uri destination, String successText) {
+        statusTitle.setText("Saving " + source.getName() + "…");
+        statusTitle.setTextColor(ACCENT);
+
+        new Thread(() -> {
+            try {
+                CloneExportUtils.copyFileToUri(getContentResolver(), source, destination);
+                runOnUiThread(() -> {
+                    statusTitle.setText(successText);
+                    statusTitle.setTextColor(SUCCESS);
+                    statusText.setText(source.getName() + " is now in the location you selected.");
+                    Toast.makeText(this, successText + ".", Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    statusTitle.setText("Save failed");
+                    statusTitle.setTextColor(DANGER);
+                    statusText.setText(ex.getMessage());
+                    Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    private void exportFolderToTree(Uri treeUri) {
+        extractFolderButton.setEnabled(false);
+        statusTitle.setText("Extracting clone…");
+        statusTitle.setTextColor(ACCENT);
+        statusText.setText("Copying the cloned files into the folder you selected.");
+
+        new Thread(() -> {
+            try {
+                Uri exported = CloneExportUtils.copyDirectoryToTree(
+                    getContentResolver(),
+                    treeUri,
+                    lastOutputDir
+                );
+                runOnUiThread(() -> {
+                    extractFolderButton.setEnabled(true);
+                    statusTitle.setText("Extract complete");
+                    statusTitle.setTextColor(SUCCESS);
+                    statusText.setText(
+                        "The full clone was copied to your chosen Files location.\n" +
+                        "Folder: " + lastOutputDir.getName()
+                    );
+                    appendLog("\n[✓] Exported clone folder to " + exported + "\n");
+                    Toast.makeText(this, "Clone extracted successfully.", Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    extractFolderButton.setEnabled(true);
+                    statusTitle.setText("Extract failed");
+                    statusTitle.setTextColor(DANGER);
+                    statusText.setText(ex.getMessage());
+                    Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
     private void startLocalhost() {
-        if (lastOutputDir == null || !lastOutputDir.exists()) {
+        if (!hasClone()) {
             Toast.makeText(this, "Clone a frontend first.", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -494,7 +807,7 @@ public class MainActivity extends Activity {
                 if (lastOutputDir != null) {
                     statusTitle.setText("Clone ready");
                     statusTitle.setTextColor(TEXT);
-                    statusText.setText(lastOutputDir.getAbsolutePath());
+                    statusText.setText("Use Browse, Extract, or Save ZIP to access the clone.");
                 }
             }
         }
@@ -502,7 +815,7 @@ public class MainActivity extends Activity {
         if (openSiteButton != null) openSiteButton.setEnabled(false);
         if (stopServerButton != null) stopServerButton.setEnabled(false);
         if (startServerButton != null) {
-            startServerButton.setEnabled(lastOutputDir != null && lastOutputDir.exists());
+            startServerButton.setEnabled(hasClone());
         }
     }
 
@@ -515,13 +828,57 @@ public class MainActivity extends Activity {
         if (lastOutputPath == null) {
             return;
         }
+        copyText("SPA-Ripper output", lastOutputPath, "Output path copied.");
+    }
 
+    private void copyText(String label, String value, String toast) {
         ClipboardManager clipboard =
             (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(
-            ClipData.newPlainText("SPA-Ripper output", lastOutputPath)
-        );
-        Toast.makeText(this, "Output path copied.", Toast.LENGTH_SHORT).show();
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, value));
+        Toast.makeText(this, toast, Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean hasClone() {
+        return lastOutputDir != null && lastOutputDir.exists() && lastOutputDir.isDirectory();
+    }
+
+    private boolean sameFile(File left, File right) {
+        try {
+            return left.getCanonicalFile().equals(right.getCanonicalFile());
+        } catch (Exception ex) {
+            return left.equals(right);
+        }
+    }
+
+    private boolean isInsideClone(File file) {
+        if (!hasClone()) return false;
+        try {
+            File root = lastOutputDir.getCanonicalFile();
+            File target = file.getCanonicalFile();
+            return target.equals(root) || target.toPath().startsWith(root.toPath());
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private String relativeTitle(File directory) {
+        if (sameFile(directory, lastOutputDir)) {
+            return lastOutputDir.getName();
+        }
+        return "…/" + relativePath(directory);
+    }
+
+    private String relativePath(File file) {
+        try {
+            String root = lastOutputDir.getCanonicalPath();
+            String path = file.getCanonicalPath();
+            if (path.equals(root)) return lastOutputDir.getName();
+            if (path.startsWith(root + File.separator)) {
+                return path.substring(root.length() + 1);
+            }
+        } catch (Exception ignored) {
+        }
+        return file.getName();
     }
 
     private LinearLayout card() {
@@ -551,7 +908,7 @@ public class MainActivity extends Activity {
         button.setTypeface(Typeface.create("sans", Typeface.BOLD));
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(12), 0, dp(12), 0);
+        button.setPadding(dp(10), 0, dp(10), 0);
         button.setBackground(buttonBackground(normalColor));
         button.setStateListAnimator(null);
         return button;
