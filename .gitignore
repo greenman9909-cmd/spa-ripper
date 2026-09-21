@@ -11,3 +11,4 @@ frontend/
 ani.pm_frontend/
 *.log
 .DS_Store
+web_jobs/\n
