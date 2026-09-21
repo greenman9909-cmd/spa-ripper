@@ -24,7 +24,7 @@ JOB_ROOT.mkdir(parents=True, exist_ok=True)
 ALLOW_PRIVATE = os.environ.get("SPA_RIPPER_ALLOW_PRIVATE", "").lower() in {"1", "true", "yes"}
 MAX_LOG_CHARS = 120_000
 
-app = Flask(__name__, template_folder="web/templates", static_folder="web/static")
+app = Flask(\n    __name__,\n    template_folder="web/templates",\n    static_folder="web/static",\n    static_url_path="/__spa_ui/static",\n)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
 _jobs = {}
@@ -242,9 +242,7 @@ def job_download(job_id):
     )
 
 
-@app.get("/preview/<job_id>/", defaults={"asset_path": ""})
-@app.get("/preview/<job_id>/<path:asset_path>")
-def preview(job_id, asset_path):
+def _serve_preview_file(job_id, asset_path, remember=False):
     with _jobs_lock:
         job = _jobs.get(job_id)
         if not job or job["status"] != "done":
@@ -254,23 +252,48 @@ def preview(job_id, asset_path):
     query = request.query_string.decode("utf-8", errors="ignore")
     request_rel = asset_path or "index.html"
 
+    def finish(response):
+        if remember:
+            response.set_cookie(
+                "spa_preview_job",
+                job_id,
+                max_age=3600,
+                httponly=True,
+                samesite="Lax",
+            )
+        return response
+
     if query:
         query_rel = query_variant_relpath("/" + request_rel + "?" + query)
         query_file = (root / query_rel).resolve()
         if (query_file == root or root in query_file.parents) and query_file.is_file():
-            return send_from_directory(root, query_rel)
+            return finish(send_from_directory(root, query_rel))
 
     target = (root / request_rel).resolve()
     if target != root and root not in target.parents:
         abort(404)
 
     if target.is_file():
-        return send_from_directory(root, request_rel)
+        return finish(send_from_directory(root, request_rel))
 
     if "." not in Path(request_rel).name:
-        return send_from_directory(root, "index.html")
+        return finish(send_from_directory(root, "index.html"))
 
     abort(404)
+
+
+@app.get("/preview/<job_id>/", defaults={"asset_path": ""})
+@app.get("/preview/<job_id>/<path:asset_path>")
+def preview(job_id, asset_path):
+    return _serve_preview_file(job_id, asset_path, remember=True)
+
+
+@app.get("/<path:asset_path>")
+def preview_root_asset(asset_path):
+    job_id = request.cookies.get("spa_preview_job")
+    if not job_id:
+        abort(404)
+    return _serve_preview_file(job_id, asset_path, remember=False)
 
 
 if __name__ == "__main__":
