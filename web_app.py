@@ -24,7 +24,12 @@ JOB_ROOT.mkdir(parents=True, exist_ok=True)
 ALLOW_PRIVATE = os.environ.get("SPA_RIPPER_ALLOW_PRIVATE", "").lower() in {"1", "true", "yes"}
 MAX_LOG_CHARS = 120_000
 
-app = Flask(\n    __name__,\n    template_folder="web/templates",\n    static_folder="web/static",\n    static_url_path="/__spa_ui/static",\n)
+app = Flask(
+    __name__,
+    template_folder="web/templates",
+    static_folder="web/static",
+    static_url_path="/__spa_ui/static",
+)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
 _jobs = {}
