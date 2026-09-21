@@ -855,7 +855,10 @@ public class MainActivity extends Activity {
         try {
             File root = lastOutputDir.getCanonicalFile();
             File target = file.getCanonicalFile();
-            return target.equals(root) || target.toPath().startsWith(root.toPath());
+            String rootPath = root.getPath();
+            String targetPath = target.getPath();
+            return targetPath.equals(rootPath) ||
+                targetPath.startsWith(rootPath + File.separator);
         } catch (Exception ex) {
             return false;
         }
