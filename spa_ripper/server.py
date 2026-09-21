@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import mimetypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 import requests
@@ -136,6 +137,12 @@ class SpaDevServer:
 
 PORT = 8080
 DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ani.pm_frontend")
+REANIME_STATIC_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "ReAnime.to-API",
+    "reanime",
+    "static",
+)
 REANIME_ORIGIN = os.environ.get("REANIME_URL", "https://owais-anime-stream-open.onrender.com").rstrip("/")
 FALLBACK_ORIGIN = "https://ani.pm"
 
@@ -147,6 +154,16 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
+    def log_message(self, format, *args):
+        # Keep logs readable
+        sys.stderr.write(f"[{self.log_date_time_string()}] {format % args}\n")
+
+    def safe_write(self, data):
+        try:
+            self.wfile.write(data)
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            pass
+
     def do_POST(self):
         if self.path.startswith("/api/"):
             self.proxy_api("POST")
@@ -155,25 +172,105 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(b'{"ok":true}')
+            self.safe_write(b'{"ok":true}')
 
     def do_GET(self):
-        # Forward API requests to ReAnime or Fallback
+        # 1. Forward API and Embed requests
         if self.path.startswith("/api/") or self.path.startswith("/embed/"):
             self.proxy_api("GET")
             return
 
-        # Serve static file if it exists
-        req_path = self.translate_path(self.path)
+        # 2. Serve ReAnime static assets (/static/embed.js, etc.)
+        if self.path.startswith("/static/"):
+            rel_path = self.path[len("/static/"):].split("?")[0].lstrip("/")
+            local_static_file = os.path.join(REANIME_STATIC_DIR, rel_path)
+            if os.path.exists(local_static_file) and not os.path.isdir(local_static_file):
+                mime, _ = mimetypes.guess_type(local_static_file)
+                try:
+                    with open(local_static_file, "rb") as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", mime or "application/javascript")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.safe_write(data)
+                    return
+                except Exception:
+                    pass
+            # If not found locally, proxy to ReAnime origin
+            self.proxy_to_reanime("GET")
+            return
+
+        # 3. Serve static file if it exists locally
+        req_path = self.translate_path(self.path.split("?")[0])
         if os.path.exists(req_path) and not os.path.isdir(req_path):
             return super().do_GET()
 
-        # SPA client routing fallback
-        if not os.path.splitext(self.path.split("?")[0])[1]:
-            self.path = "/index.html"
-            return super().do_GET()
+        # 4. If missing file has an extension (images, banners, logos, chunks), fetch from upstream & cache
+        ext = os.path.splitext(self.path.split("?")[0])[1].lower()
+        if ext:
+            self.fetch_and_cache(req_path)
+            return
 
+        # 5. SPA client-side routing fallback (all route paths serve index.html)
+        self.path = "/index.html"
         return super().do_GET()
+
+    def fetch_and_cache(self, local_save_path):
+        """Fetch missing static asset from upstream ani.pm and cache locally on disk."""
+        upstream_url = f"{FALLBACK_ORIGIN}{self.path}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://ani.pm/",
+        }
+
+        try:
+            resp = requests.get(upstream_url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                # Cache to disk for future requests
+                try:
+                    os.makedirs(os.path.dirname(local_save_path), exist_ok=True)
+                    with open(local_save_path, "wb") as f:
+                        f.write(resp.content)
+                except Exception:
+                    pass
+
+                content_type = resp.headers.get("Content-Type") or self.guess_type(local_save_path)
+                self.send_response(200)
+                self.send_header("Content-Type", content_type or "application/octet-stream")
+                self.send_header("Content-Length", str(len(resp.content)))
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.safe_write(resp.content)
+                return
+            else:
+                self.send_error(resp.status_code, "Upstream Not Found")
+                return
+        except Exception:
+            self.send_error(404, "File Not Found")
+            return
+
+    def proxy_to_reanime(self, method):
+        target_url = f"{REANIME_ORIGIN}{self.path}"
+        try:
+            resp = requests.request(
+                method=method,
+                url=target_url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+                timeout=10,
+            )
+            self.send_response(resp.status_code)
+            for k, v in resp.headers.items():
+                if k.lower() not in ("content-length", "content-encoding", "transfer-encoding"):
+                    self.send_header(k, v)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(resp.content)))
+            self.end_headers()
+            self.safe_write(resp.content)
+        except Exception:
+            self.send_error(502, "Bad Gateway")
 
     def proxy_api(self, method):
         global LAST_ANILIST_ID
@@ -189,12 +286,14 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
             ep = parsed_qs.get("ep", ["1"])[0]
             sel = parsed_qs.get("selection", [""])[0]
             ani_id = SELECTION_MAP.get(sel, LAST_ANILIST_ID)
-            embed_url = f"{REANIME_ORIGIN}/embed/ani/{ani_id}/{ep}"
+
+            host = self.headers.get("Host", f"localhost:{PORT}")
+            embed_url = f"http://{host}/embed/ani/{ani_id}/{ep}"
 
             payload = json.dumps({
                 "embedUrl": embed_url,
                 "expiresAt": 2147483647,
-                "provider": "anipm"
+                "provider": "anipm",
             }).encode("utf-8")
 
             self.send_response(200)
@@ -202,7 +301,7 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
-            self.wfile.write(payload)
+            self.safe_write(payload)
             return
 
         # 1. Try ReAnime backend first
@@ -218,10 +317,9 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
                 url=reanime_url,
                 headers=headers,
                 data=body,
-                timeout=5,
+                timeout=6,
                 allow_redirects=True,
             )
-            # If ReAnime answered successfully (200..399), return its response!
             if resp.status_code < 400:
                 self.send_response(resp.status_code)
                 for k, v in resp.headers.items():
@@ -230,12 +328,12 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Content-Length", str(len(resp.content)))
                 self.end_headers()
-                self.wfile.write(resp.content)
+                self.safe_write(resp.content)
                 return
         except Exception:
             pass
 
-        # 2. Fallback to upstream origin if ReAnime returned 404 or was unreachable
+        # 2. Fallback to upstream origin
         fallback_url = f"{FALLBACK_ORIGIN}{self.path}"
         fallback_headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -253,7 +351,6 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
                 allow_redirects=True,
             )
 
-            # If playback bootstrap is returned, extract the anilistId and selection token
             if "/api/anime/playback-bootstrap" in self.path and resp.status_code == 200:
                 try:
                     data = resp.json()
@@ -274,13 +371,13 @@ class AniPMProxyHandler(SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Content-Length", str(len(resp.content)))
             self.end_headers()
-            self.wfile.write(resp.content)
+            self.safe_write(resp.content)
         except Exception:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(b'{"ok":true}')
+            self.safe_write(b'{"ok":true}')
 
 
 def main():
