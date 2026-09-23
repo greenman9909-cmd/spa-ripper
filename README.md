@@ -81,6 +81,18 @@ docker build -t spa-ripper-web .
 docker run --rm -p 7860:7860 spa-ripper-web
 ```
 
+### Railway
+
+Production deployment:
+
+```text
+https://spa-ripper-web-production.up.railway.app
+```
+
+The hosted service builds from the repository `Dockerfile`, runs the Flask app behind Gunicorn, and uses `/api/health` as its deployment health check.
+
+> Keep `SPA_RIPPER_ALLOW_PRIVATE=0` on public deployments. SPA-Ripper's web console runs background clone jobs and writes generated files locally, so a long-running container host such as Railway or Render is a better fit than an ephemeral serverless runtime.
+
 ### Render
 
 A `render.yaml` blueprint and `Dockerfile` are included. Import the repository into Render and deploy the `spa-ripper-web` service.
@@ -96,7 +108,6 @@ A `render.yaml` blueprint and `Dockerfile` are included. Import the repository i
 ```bash
 # Basic usage (clones into ./frontend by default)
 python run.py clone https://ani.pm/
-
 # Specify custom output directory
 python run.py clone https://ani.pm/ -o ./ani_frontend
 ```
