@@ -59,11 +59,52 @@ class SpaDevServer:
                     self.path = "/" + local_rel.replace(os.sep, "/")
                     return super().do_GET()
 
-                if not os.path.splitext(self.path.split("?", 1)[0])[1]:
+                # SPA client-side route fallback (no extension = route, not asset)
+                path_no_qs = self.path.split("?", 1)[0]
+                if not os.path.splitext(path_no_qs)[1]:
                     self.path = "/index.html"
                     return super().do_GET()
 
+                # Transparent asset pass-through: if the file is missing locally
+                # but we have a proxy origin, fetch it live and cache to disk.
+                local_abs = os.path.join(root_dir, path_no_qs.lstrip("/").replace("/", os.sep))
+                if not os.path.exists(local_abs) and proxy_target:
+                    self._fetch_and_cache(local_abs)
+                    return
+
                 return super().do_GET()
+
+            def _fetch_and_cache(self, local_save_path):
+                """Fetch a missing static asset from the proxy origin, serve it, and cache locally."""
+                upstream_url = f"{proxy_target}{self.path}"
+                req_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Referer": proxy_target + "/",
+                }
+                try:
+                    resp = requests.get(upstream_url, headers=req_headers, timeout=15)
+                    if resp.status_code == 200:
+                        try:
+                            os.makedirs(os.path.dirname(local_save_path), exist_ok=True)
+                            with open(local_save_path, "wb") as fh:
+                                fh.write(resp.content)
+                        except Exception:
+                            pass
+                        ct = resp.headers.get("Content-Type", "application/octet-stream")
+                        self.send_response(200)
+                        self.send_header("Content-Type", ct)
+                        self.send_header("Content-Length", str(len(resp.content)))
+                        self.send_header("Cache-Control", "public, max-age=86400")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        try:
+                            self.wfile.write(resp.content)
+                        except (ConnectionResetError, BrokenPipeError):
+                            pass
+                    else:
+                        self.send_error(resp.status_code, "Upstream error")
+                except Exception as exc:
+                    self.send_error(502, f"Proxy fetch failed: {exc}")
 
             def proxy_request(self, method: str):
                 target_url = f"{proxy_target}{self.path}"

@@ -1,110 +1,350 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#061016">
-  <title>SPA-Ripper — Web Console</title>
-  <meta name="description" content="Clone, inspect, preview and download modern SPA frontends.">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPA-Ripper — Clone Modern SPA Frontends</title>
+  <meta name="description" content="Recursive SPA frontend cloner for Vite, Webpack, React, Vue, Svelte and Angular. With live logs, local preview, and ZIP export.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2309090b'/%3E%3Cpath d='M18.7 2 6.9 17.1h7.2L12.6 30 25.4 13.2h-7.1L18.7 2Z' fill='%23ffffff'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <header class="topbar shell">
-    <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32"><path d="M18.7 2 6.9 17.1h7.2L12.6 30 25.4 13.2h-7.1L18.7 2Z"/></svg>
-      </span>
-      <span><strong>SPA-Ripper</strong><small>Web Console</small></span>
-    </a>
-    <div class="top-actions">
-      <span class="pill"><i></i> Engine online</span>
-      <a class="ghost-link" href="https://github.com/greenman9909-cmd/spa-ripper" target="_blank" rel="noreferrer">GitHub ↗</a>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand-link" href="/">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18.7 2 6.9 17.1h7.2L12.6 30 25.4 13.2h-7.1L18.7 2Z" fill="currentColor"/>
+        </svg>
+        <span class="brand-name">SPA-Ripper</span>
+        <span class="brand-edition">v2.0</span>
+      </a>
+
+      <nav class="header-nav">
+        <a class="nav-link" href="#studio">Studio</a>
+        <a class="nav-link" href="#features">Features</a>
+        <a class="nav-link" href="#history">History</a>
+        <a class="header-status-link" id="enginePill" href="#studio">
+          <span class="status-dot"></span>
+          All systems operational
+        </a>
+        <a class="nav-link" href="https://github.com/greenman9909-cmd/spa-ripper" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
     </div>
   </header>
 
-  <main class="shell">
-    <section class="hero">
-      <div class="hero-copy">
-        <div class="eyebrow">RECURSIVE SPA FRONTEND CLONER</div>
-        <h1>Clone modern frontends.<br><span>Inspect them beautifully.</span></h1>
-        <p>Vite, Webpack, React, Vue, Svelte, Angular and more — with recursive asset discovery, live progress, local preview and ZIP export.</p>
-      </div>
-      <div class="hero-stat-grid">
-        <div class="mini-stat"><span>01</span><b>Recursive chunks</b><small>JS, CSS, fonts & media</small></div>
-        <div class="mini-stat"><span>02</span><b>Live clone logs</b><small>See every saved asset</small></div>
-        <div class="mini-stat"><span>03</span><b>Instant preview</b><small>SPA route fallback included</small></div>
-      </div>
-    </section>
+  <!-- ── HERO ── -->
+  <section class="hero-section page-container">
+    <a class="hero-announcement-chip" href="https://github.com/greenman9909-cmd/spa-ripper" target="_blank" rel="noreferrer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Open-source on GitHub — Star us ↗
+    </a>
+    <h1 class="hero-headline">Clone modern frontends.<br>Inspect them locally.</h1>
+    <p class="hero-subhead">Vite · Webpack · React · Vue · Svelte · Angular — recursive asset discovery, lazy-chunk capture, live logs, and ZIP export. Zero parser dependencies.</p>
+    <div class="hero-actions">
+      <a class="btn-primary-action" href="#studio">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Start cloning
+      </a>
+      <a class="btn-secondary-action" href="https://github.com/greenman9909-cmd/spa-ripper" target="_blank" rel="noreferrer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        View source
+      </a>
+    </div>
+  </section>
 
-    <section class="workspace">
-      <article class="panel launch-panel">
-        <div class="panel-head">
-          <div><span class="section-kicker">NEW CLONE</span><h2>Target website</h2></div>
-          <span class="security-badge">Public hosts only</span>
+  <!-- ── STUDIO CONSOLE ── -->
+  <section id="studio" class="studio-section page-container">
+    <div class="studio-console-card">
+
+      <!-- Console header bar -->
+      <div class="console-header-bar">
+        <div class="console-title-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          SPA-Ripper Console
         </div>
+        <div class="console-edge-pill">
+          <span class="mini-dot"></span>
+          Engine ready
+        </div>
+      </div>
 
-        <form id="cloneForm" class="clone-form">
-          <label for="targetUrl">Website URL</label>
-          <div class="input-wrap">
-            <span class="input-icon">↗</span>
-            <input id="targetUrl" name="url" type="text" inputmode="url" autocomplete="url" placeholder="https://example.com" required>
-            <button id="cloneBtn" type="submit"><span>Clone frontend</span><b>→</b></button>
-          </div>
-          <p class="form-note">Use only on websites you own or have permission to archive. Private/internal network targets are blocked by default.</p>
-        </form>
-
-        <div id="activeJob" class="active-job hidden">
-          <div class="job-line">
-            <div>
-              <span id="jobStatusDot" class="status-dot running"></span>
-              <strong id="jobTitle">Starting clone…</strong>
-              <small id="jobUrl"></small>
+      <!-- URL input toolbar -->
+      <div class="console-toolbar">
+        <form id="cloneForm" class="toolbar-form">
+          <label class="toolbar-label" for="targetUrl">TARGET URL</label>
+          <div class="toolbar-input-group">
+            <div class="config-input-wrap">
+              <svg class="input-prefix-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              <input id="targetUrl" class="config-input url-main-input" type="text" inputmode="url" placeholder="https://example.com" spellcheck="false" autocomplete="off" required>
             </div>
-            <span id="jobBadge" class="job-badge">QUEUED</span>
+            <button id="cloneBtn" type="submit" class="btn-mount-stream">
+              <span class="btn-mount-label">Clone frontend</span>
+              <svg class="btn-mount-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <span class="btn-mount-spinner" hidden></span>
+            </button>
           </div>
-
-          <div class="progress-track"><span id="progressBar"></span></div>
-
-          <div class="metrics">
-            <div><small>Files</small><strong id="metricFiles">0</strong></div>
-            <div><small>Downloaded</small><strong id="metricBytes">0 B</strong></div>
-            <div><small>Failed</small><strong id="metricFailed">0</strong></div>
-          </div>
-
-          <div class="console-wrap">
-            <div class="console-head"><span><i></i> Live activity</span><button type="button" id="clearLog">Clear</button></div>
-            <pre id="logOutput">Waiting for worker…</pre>
-          </div>
-
-          <div id="resultActions" class="result-actions hidden">
-            <a id="previewBtn" class="primary-action" target="_blank" rel="noreferrer">Open preview ↗</a>
-            <a id="downloadBtn" class="secondary-action">Download ZIP ↓</a>
-          </div>
-        </div>
-      </article>
-
-      <aside class="panel info-panel">
-        <div class="panel-head compact"><div><span class="section-kicker">ENGINE</span><h2>What gets captured</h2></div></div>
-        <div class="feature-stack">
-          <div class="feature-row"><span class="feature-icon">JS</span><div><b>Lazy bundles & chunks</b><small>Compiled bundles and runtime asset references.</small></div></div>
-          <div class="feature-row"><span class="feature-icon">CSS</span><div><b>Deep stylesheet assets</b><small>Fonts, backgrounds, SVGs and <code>url(...)</code> references.</small></div></div>
-          <div class="feature-row"><span class="feature-icon">MEDIA</span><div><b>Images, video & audio</b><small>JPG, AVIF, WebP, MP4, HLS, subtitles and more.</small></div></div>
-          <div class="feature-row"><span class="feature-icon">SPA</span><div><b>Client-side route preview</b><small>Extensionless routes fall back to the cloned index shell.</small></div></div>
-        </div>
-        <div class="tip-box"><span>TIP</span><p>Some sites depend on live APIs, authentication or server-rendered data. SPA-Ripper preserves frontend assets; backend behavior may remain external.</p></div>
-      </aside>
-    </section>
-
-    <section class="history-section">
-      <div class="section-heading">
-        <div><span class="section-kicker">SESSION</span><h2>Recent clones</h2></div>
-        <button id="refreshHistory" class="icon-btn" title="Refresh">↻</button>
+          <p class="toolbar-note">Use only on sites you own or have permission to archive. Private/internal targets are blocked.</p>
+        </form>
       </div>
-      <div id="historyGrid" class="history-grid"><div class="empty-state">No clones yet in this server session.</div></div>
-    </section>
-  </main>
 
-  <footer class="shell footer"><span>SPA-Ripper Web</span><span>Powered by the SPA-Ripper engine.</span></footer>
+      <!-- Active job panel (hidden until clone starts) -->
+      <div id="activeJob" class="console-job-panel" hidden>
+
+        <!-- Job status bar -->
+        <div class="console-url-strip">
+          <div class="job-status-left">
+            <span id="jobDot" class="embed-tag-badge job-dot-badge">QUEUED</span>
+            <span id="jobTitle" class="stream-url-display">Starting…</span>
+          </div>
+          <div class="job-status-right">
+            <span id="jobUrl" class="job-url-mono"></span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-track">
+          <div id="progressBar" class="progress-fill"></div>
+        </div>
+
+        <!-- Metrics row -->
+        <div class="console-embed-strip metrics-strip">
+          <div class="metric-cell">
+            <span class="metric-key">Files</span>
+            <span id="metricFiles" class="metric-val">0</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-cell">
+            <span class="metric-key">Downloaded</span>
+            <span id="metricBytes" class="metric-val">0 B</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-cell">
+            <span class="metric-key">Failed</span>
+            <span id="metricFailed" class="metric-val">0</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-cell">
+            <span class="metric-key">Elapsed</span>
+            <span id="metricElapsed" class="metric-val">0s</span>
+          </div>
+          <div id="stackDetect" class="stack-detect-row" hidden>
+            <div class="metric-divider"></div>
+            <span class="metric-key">Stack</span>
+            <div id="stackBadges" class="stack-badges-inline"></div>
+          </div>
+        </div>
+
+        <!-- Terminal window -->
+        <div class="console-terminal">
+          <div class="terminal-titlebar">
+            <div class="terminal-traffic">
+              <span class="tc-red"></span>
+              <span class="tc-yellow"></span>
+              <span class="tc-green"></span>
+            </div>
+            <span class="terminal-name">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Live activity
+            </span>
+            <button type="button" id="clearLog" class="btn-copy-stream-url">Clear</button>
+          </div>
+          <pre id="logOutput" class="terminal-log">Waiting for worker…</pre>
+        </div>
+
+        <!-- Result actions -->
+        <div id="resultActions" class="console-result-bar" hidden>
+          <a id="previewBtn" class="btn-primary-action result-btn" target="_blank" rel="noreferrer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open preview
+          </a>
+          <a id="downloadBtn" class="btn-secondary-action result-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download ZIP
+          </a>
+        </div>
+
+      </div><!-- /activeJob -->
+    </div><!-- /studio-console-card -->
+  </section>
+
+  <!-- ── FEATURES ── -->
+  <section id="features" class="catalog-section page-container">
+    <div class="catalog-header-wrap">
+      <div class="catalog-title-group">
+        <div class="catalog-badge-pill">
+          <span class="catalog-badge-dot"></span>
+          ENGINE
+        </div>
+        <h2 class="catalog-heading">What gets captured</h2>
+        <p class="catalog-subheading">Every asset the browser would load — including lazy-loaded chunks discovered at runtime inside JavaScript string literals.</p>
+      </div>
+    </div>
+
+    <div class="anime-grid features-grid">
+      <div class="anime-card">
+        <div class="card-manifest-head">
+          <span class="manifest-tag">BUNDLES</span>
+          <span class="manifest-status"><span class="manifest-status-dot"></span>ACTIVE</span>
+        </div>
+        <div class="card-meta-body">
+          <div>
+            <div class="card-title-line">JS lazy chunks</div>
+            <div class="card-studio-sub">Dynamic imports & code-split bundles</div>
+            <div class="card-specs-group">
+              <span class="spec-chip">Vite</span>
+              <span class="spec-chip">Webpack</span>
+              <span class="spec-chip">Rollup</span>
+            </div>
+          </div>
+          <div class="card-action-row">
+            <span class="action-node-id">assets/*.js</span>
+            <span class="action-mount-cta">Recursive scan <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anime-card">
+        <div class="card-manifest-head">
+          <span class="manifest-tag">STYLES</span>
+          <span class="manifest-status"><span class="manifest-status-dot"></span>ACTIVE</span>
+        </div>
+        <div class="card-meta-body">
+          <div>
+            <div class="card-title-line">Deep CSS assets</div>
+            <div class="card-studio-sub">Fonts, backgrounds & url() refs</div>
+            <div class="card-specs-group">
+              <span class="spec-chip">woff2</span>
+              <span class="spec-chip">SVG</span>
+              <span class="spec-chip">@font-face</span>
+            </div>
+          </div>
+          <div class="card-action-row">
+            <span class="action-node-id">assets/*.css</span>
+            <span class="action-mount-cta">url() parser <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anime-card">
+        <div class="card-manifest-head">
+          <span class="manifest-tag">MEDIA</span>
+          <span class="manifest-status"><span class="manifest-status-dot"></span>ACTIVE</span>
+        </div>
+        <div class="card-meta-body">
+          <div>
+            <div class="card-title-line">Images, video & audio</div>
+            <div class="card-studio-sub">All media assets in the bundle</div>
+            <div class="card-specs-group">
+              <span class="spec-chip">WebP</span>
+              <span class="spec-chip">AVIF</span>
+              <span class="spec-chip">MP4</span>
+              <span class="spec-chip">HLS</span>
+            </div>
+          </div>
+          <div class="card-action-row">
+            <span class="action-node-id">banners/*.webp</span>
+            <span class="action-mount-cta">Auto-detected <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anime-card">
+        <div class="card-manifest-head">
+          <span class="manifest-tag">PWA</span>
+          <span class="manifest-status"><span class="manifest-status-dot"></span>ACTIVE</span>
+        </div>
+        <div class="card-meta-body">
+          <div>
+            <div class="card-title-line">PWA & service workers</div>
+            <div class="card-studio-sub">Manifests, icons & sw.js</div>
+            <div class="card-specs-group">
+              <span class="spec-chip">manifest</span>
+              <span class="spec-chip">sw.js</span>
+              <span class="spec-chip">icons</span>
+            </div>
+          </div>
+          <div class="card-action-row">
+            <span class="action-node-id">manifest.webmanifest</span>
+            <span class="action-mount-cta">Full PWA <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ARCHITECTURE CARDS ── -->
+  <section class="content-section page-container">
+    <div class="section-headline-center">
+      <h2 class="section-main-title">How SPA-Ripper works</h2>
+      <p class="section-tagline">Three-phase pipeline — fetch, parse, serve.</p>
+    </div>
+    <div class="architecture-grid">
+      <div class="arch-card">
+        <div class="arch-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="arch-card-title">1. Fetch & parse</div>
+        <p class="arch-card-desc">Loads the root shell, extracts all <code>&lt;script&gt;</code>, <code>&lt;link&gt;</code>, and <code>&lt;img&gt;</code> tags, then recursively discovers assets referenced inside JS string literals.</p>
+      </div>
+      <div class="arch-card">
+        <div class="arch-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        </div>
+        <div class="arch-card-title">2. Download & cache</div>
+        <p class="arch-card-desc">All assets are downloaded concurrently and written to disk with their original path structure. CSS <code>url()</code> declarations are followed recursively for fonts and images.</p>
+      </div>
+      <div class="arch-card">
+        <div class="arch-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+        </div>
+        <div class="arch-card-title">3. Serve locally</div>
+        <p class="arch-card-desc">A built-in dev server handles SPA route fallback, reverse-proxies <code>/api/*</code> to the real origin, and auto-fetches any missing chunks on first request.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HISTORY ── -->
+  <section id="history" class="catalog-section page-container">
+    <div class="catalog-header-wrap">
+      <div class="catalog-title-group">
+        <div class="catalog-badge-pill">
+          <span class="catalog-badge-dot"></span>
+          SESSION
+        </div>
+        <h2 class="catalog-heading">Recent clones</h2>
+        <p class="catalog-subheading">Clone history for this server session.</p>
+      </div>
+      <button id="refreshHistory" class="btn-secondary-action" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div id="historyGrid" class="anime-grid history-anime-grid">
+      <div class="history-empty-state">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>No clones yet this session.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="site-footer page-container">
+    <div class="footer-inner">
+      <div class="footer-brand-wrap">
+        <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M18.7 2 6.9 17.1h7.2L12.6 30 25.4 13.2h-7.1L18.7 2Z"/></svg>
+        <span class="footer-brand-name">SPA-Ripper</span>
+        <span class="footer-edition">v2.0</span>
+      </div>
+      <p class="footer-copy">Open-source SPA frontend cloning engine. MIT License.</p>
+      <a class="footer-gh-link" href="https://github.com/greenman9909-cmd/spa-ripper" target="_blank" rel="noreferrer">GitHub ↗</a>
+    </div>
+  </footer>
+
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
