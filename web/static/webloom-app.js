@@ -275,3 +275,54 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     });
   },{passive:true});
 })();
+
+(function(){
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const surfaces = [...document.querySelectorAll(".motion-surface")];
+  surfaces.forEach(el=>{
+    if(reduced) return;
+    el.addEventListener("pointermove",e=>{
+      const r=el.getBoundingClientRect();
+      el.style.setProperty("--mx",((e.clientX-r.left)/r.width*100).toFixed(2)+"%");
+      el.style.setProperty("--my",((e.clientY-r.top)/r.height*100).toFixed(2)+"%");
+      const ry=((e.clientX-r.left)/r.width-.5)*3;
+      const rx=((e.clientY-r.top)/r.height-.5)*-3;
+      el.style.setProperty("--depth-rx",rx.toFixed(2)+"deg");
+      el.style.setProperty("--depth-ry",ry.toFixed(2)+"deg");
+    });
+    el.addEventListener("pointerleave",()=>{
+      el.style.setProperty("--mx","50%");
+      el.style.setProperty("--my","50%");
+      el.style.setProperty("--depth-rx","0deg");
+      el.style.setProperty("--depth-ry","0deg");
+    });
+  });
+
+  const scrubbers=[...document.querySelectorAll("[data-scrub]")];
+  const depthNodes=[...document.querySelectorAll("[data-depth]")];
+  if(!scrubbers.length && !depthNodes.length) return;
+  let raf=0;
+  const update=()=>{
+    raf=0;
+    const vh=innerHeight||1;
+    scrubbers.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const raw=(vh-r.top)/(vh+r.height);
+      const p=Math.max(0,Math.min(1,raw));
+      el.style.setProperty("--scrub",p.toFixed(4));
+      el.style.setProperty("--scrub-y",((1-p)*18).toFixed(2)+"px");
+      el.style.setProperty("--scrub-scale",(0.985+p*.015).toFixed(4));
+    });
+    depthNodes.forEach((el,i)=>{
+      const r=el.getBoundingClientRect();
+      const center=r.top+r.height/2;
+      const delta=(center-vh/2)/vh;
+      const strength=Number(el.dataset.depth||1);
+      el.style.setProperty("--depth-y",(-delta*18*strength).toFixed(2)+"px");
+    });
+  };
+  const requestUpdate=()=>{if(!raf)raf=requestAnimationFrame(update)};
+  addEventListener("scroll",requestUpdate,{passive:true});
+  addEventListener("resize",requestUpdate);
+  update();
+})();
