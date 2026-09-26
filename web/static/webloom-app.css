@@ -195,6 +195,5 @@ background-size:24px 24px,24px 24px,auto}
 @media(max-width:760px){.asset-grid,.meta-grid{grid-template-columns:1fr 1fr}.export-box{grid-template-columns:1fr}.project-panel{padding:12px}.data-row{grid-template-columns:1fr}.data-row span{white-space:normal}}
 @media(max-width:480px){.asset-grid,.meta-grid{grid-template-columns:1fr}}
 
-.wl-icon{display:inline-block;width:44px;height:44px;flex:0 0 44px;border-radius:13px;background-image:url("https://d8j0ntlcm91z4.cloudfront.net/user_3JEMaztk5cydq3baJVYezSUuipQ/hf_20260926_172624_06d8273e-a58b-4d7e-b2d8-c5cba782fff4.png");background-size:400% 200%;background-repeat:no-repeat;background-color:#fff;border:1px solid #edf1f6;box-shadow:0 8px 22px rgba(38,58,105,.07)}
-.wl-icon.wl-pages{background-position:0% 0%}.wl-icon.wl-assets{background-position:33.333% 0%}.wl-icon.wl-code{background-position:66.666% 0%}.wl-icon.wl-links{background-position:100% 0%}.wl-icon.wl-preview{background-position:0% 100%}.wl-icon.wl-metadata{background-position:33.333% 100%}.wl-icon.wl-sitemap{background-position:66.666% 100%}.wl-icon.wl-export{background-position:100% 100%}
-.wl-icon.small{width:34px;height:34px;flex-basis:34px;border-radius:10px}
+.mini-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#eef3ff,#f5efff);color:#5267df;border:1px solid #e5eaf4}
+.mini-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
