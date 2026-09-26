@@ -114,7 +114,7 @@
     <nav class="nav">
       <a class="brand" href="#"><span class="logo" aria-hidden="true"></span><span>WebLoom</span></a>
       <div class="links">
-        <a href="#features">Features</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
+        <a href="#features">Features</a><a href="#how">How it works</a><a href="/pricing">Pricing</a><a href="#faq">FAQ</a>
       </div>
       <div class="navcta"><a class="btn" href="/signin">Sign in</a><a class="btn primary" href="/new"><span>Start free</span><span class="cta-arrow">→</span></a></div>
     </nav>
@@ -127,10 +127,10 @@
           <span class="eyebrow">Capture · Inspect · Export</span>
           <h1>Turn a live website into a <span class="grad">clean, explorable project.</span></h1>
           <p class="lead">Paste a public URL. WebLoom maps the site's pages, assets, links and metadata, lets you inspect the capture live, then packages everything into a structured project ready to export.</p>
-          <div class="urlbar">
+          <form class="urlbar" id="heroCaptureForm">
             <label class="urlbox">
               <svg viewBox="0 0 24 24" fill="none"><path d="M10.4 13.6a4.5 4.5 0 0 0 6.4 0l2.8-2.8a4.5 4.5 0 1 0-6.4-6.4l-1.6 1.6"/><path d="M13.6 10.4a4.5 4.5 0 0 0-6.4 0l-2.8 2.8a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg>
-              <input placeholder="https://example.com" aria-label="Website URL" />
+              <input id="heroUrl" name="url" placeholder="https://example.com" aria-label="Website URL" />
             </label>
             <a class="btn primary" href="/new"><span>Start free capture</span><span class="cta-arrow">→</span></a>
             <a class="btn" href="#pricing">Explore Pro · €2.99</a>
@@ -253,6 +253,13 @@
     document.querySelectorAll(".reveal").forEach((el) => {
       if (revealObserver) revealObserver.observe(el);
       else el.classList.add("is-visible");
+    });
+    const captureForm = document.getElementById("heroCaptureForm");
+    captureForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = document.getElementById("heroUrl")?.value.trim();
+      const target = value ? "/new?url=" + encodeURIComponent(value) : "/new";
+      window.location.href = target;
     });
   </script>
 </body>
