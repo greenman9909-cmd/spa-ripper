@@ -648,6 +648,12 @@ def api_billing_checkout():
     import stripe
     stripe.api_key = STRIPE_SECRET_KEY
     user = request.webloom_user
+    if user.get("is_anonymous") or not user.get("email"):
+        return jsonify({
+            "ok": False,
+            "error": "Create or sign in to an account before starting Pro billing.",
+            "account_required": True,
+        }), 409
     base = PUBLIC_APP_URL or request.host_url.rstrip("/")
     session_obj = stripe.checkout.Session.create(
         mode="subscription",
