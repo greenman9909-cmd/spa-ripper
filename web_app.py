@@ -48,7 +48,8 @@ from webloom_integrations import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-JOB_ROOT = Path(os.environ.get("SPA_RIPPER_WEB_JOBS", BASE_DIR / "web_jobs")).resolve()
+_DEFAULT_JOB_ROOT = Path("/tmp/web_jobs") if os.environ.get("VERCEL") else BASE_DIR / "web_jobs"
+JOB_ROOT = Path(os.environ.get("SPA_RIPPER_WEB_JOBS", _DEFAULT_JOB_ROOT)).resolve()
 JOB_ROOT.mkdir(parents=True, exist_ok=True)
 
 ALLOW_PRIVATE = os.environ.get("SPA_RIPPER_ALLOW_PRIVATE", "").lower() in {"1", "true", "yes"}
