@@ -20,6 +20,11 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(body)
   });
+  const apiPatch = (url, body={}) => json(url, {
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
   const fmtBytes = n => {
     const v = Number(n||0);
     if (v < 1024) return v+" B";
@@ -44,8 +49,8 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
         const email=(u.email||"WL").trim();
         el.textContent=(email.slice(0,2)||"WL").toUpperCase();
       });
-      if(u.role==="owner"){
-        $$(".side-nav").slice(-1)[0]?.insertAdjacentHTML("beforeend", '<a href="/admin"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>Owner console</a>');
+      if(u.role==="owner" && !$('.side-nav a[href="/admin"]')){
+        $(".side-nav").slice(-1)[0]?.insertAdjacentHTML("beforeend", '<a href="/admin"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>Owner console</a>');
       }
       return u;
     }catch(e){ return null; }
@@ -169,14 +174,104 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     }
   }
 
+  function recoveryPage(){
+    if(path!=="/forgot") return;
+    const form=$("#recoverForm");
+    const button=$("#recoverButton");
+    const email=$("#recoverEmail");
+    const status=$("#recoverStatus");
+    if(!form||!button||!email||!status) return;
+    form.addEventListener("submit",async e=>{
+      e.preventDefault();
+      status.textContent="";
+      const old=button.textContent;
+      button.disabled=true;
+      button.textContent="Sending…";
+      try{
+        await apiPost("/api/auth/recover",{email:email.value.trim()});
+        status.classList.add("ok");
+        status.textContent="Recovery email sent. Check your inbox.";
+        button.textContent="Email sent";
+      }catch(err){
+        status.classList.remove("ok");
+        status.textContent=err.message;
+        button.disabled=false;
+        button.textContent=old;
+      }
+    });
+  }
+
+  async function accountPage(){
+    if(path!=="/account") return;
+    const u=await hydrateUser();
+    if(!u) return;
+    const name=$("#accountName"), email=$("#accountEmail"), save=$("#saveAccount"), status=$("#accountStatus");
+    if(name) name.value=u.display_name||"";
+    if(email) email.value=u.email||"";
+    save?.addEventListener("click",async()=>{
+      const old=save.textContent;
+      save.disabled=true; save.textContent="Saving…";
+      if(status) status.textContent="";
+      try{
+        const d=await apiPatch("/api/account",{display_name:name?.value.trim()||""});
+        if(status){status.className="form-status ok";status.textContent="Account saved.";}
+        if(d.profile?.display_name && name) name.value=d.profile.display_name;
+      }catch(err){
+        if(status){status.className="form-status error";status.textContent=err.message;}
+      }finally{
+        save.disabled=false;save.textContent=old;
+      }
+    });
+  }
+
+  async function settingsPage(){
+    if(path!=="/settings") return;
+    const u=await hydrateUser();
+    if(!u) return;
+    const settings=u.settings||{};
+    const capture=$("#captureMode"), format=$("#exportFormat"), naming=$("#projectNaming"), save=$("#saveSettings"), status=$("#settingsStatus");
+    if(capture) capture.value=settings.capture_mode||"standard";
+    if(format) format.value=settings.export_format||"zip";
+    if(naming) naming.value=settings.project_naming||"hostname";
+    const deepOption=capture?.querySelector('option[value="deep"]');
+    if(deepOption && u.role!=="owner" && u.plan!=="pro") deepOption.disabled=true;
+    save?.addEventListener("click",async()=>{
+      const old=save.textContent;save.disabled=true;save.textContent="Saving…";
+      if(status) status.textContent="";
+      try{
+        await apiPatch("/api/settings",{
+          capture_mode:capture?.value||"standard",
+          export_format:format?.value||"zip",
+          project_naming:naming?.value||"hostname"
+        });
+        if(status){status.className="form-status ok";status.textContent="Defaults saved.";}
+      }catch(err){
+        if(status){status.className="form-status error";status.textContent=err.message;}
+      }finally{save.disabled=false;save.textContent=old;}
+    });
+  }
+
   async function signoutButtons(){
     $$("[data-signout]").forEach(btn=>btn.addEventListener("click",async()=>{await apiPost("/api/auth/signout");location.href="/";}));
   }
 
   if(path==="/signin") authPage("signin");
   if(path==="/signup") authPage("signup");
+  recoveryPage();
   if(path==="/dashboard") dashboard(); else hydrateUser();
   projectPage();
   billingPage();
+  accountPage();
+  settingsPage();
   signoutButtons();
+
+  let motionFrame=0;
+  addEventListener("scroll",()=>{
+    if(motionFrame) return;
+    motionFrame=requestAnimationFrame(()=>{
+      motionFrame=0;
+      const y=Math.max(-36,Math.min(72,scrollY*.035));
+      document.documentElement.style.setProperty("--app-orb-y",y+"px");
+    });
+  },{passive:true});
 })();
