@@ -172,6 +172,21 @@ def home():
     return render_template("index.html")
 
 
+
+
+@app.get("/signin")
+@app.get("/dashboard")
+@app.get("/new")
+@app.get("/history")
+@app.get("/billing")
+@app.get("/settings")
+@app.get("/privacy")
+@app.get("/terms")
+@app.get("/project/<project_id>")
+def product_app(project_id=None):
+    return render_template("app.html")
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True, "service": "SPA-Ripper Web"})
