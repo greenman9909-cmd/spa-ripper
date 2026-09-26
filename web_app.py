@@ -2,6 +2,8 @@ import contextlib
 import io
 import ipaddress
 import mimetypes
+import hashlib
+import hmac
 import os
 import shutil
 import socket
@@ -12,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session, redirect
+from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session, redirect, make_response
 
 from spa_ripper.path_utils import query_variant_relpath
 from spa_ripper.scraper import DEFAULT_USER_AGENT, SpaScraper
@@ -33,6 +35,8 @@ from webloom_integrations import (
     supabase_ready,
     storage_upload_file,
     storage_download,
+    restore_free_capture,
+    auth_recover,
 )
 
 
@@ -67,9 +71,57 @@ SPA_REKT_INTERNAL_TOKEN = os.environ.get("SPA_REKT_INTERNAL_TOKEN", "")
 SPA_REKT_ALLOWED_HOSTS = {
     h.strip().lower() for h in os.environ.get("SPA_REKT_ALLOWED_HOSTS", "").split(",") if h.strip()
 }
+ABUSE_SECRET = os.environ.get("WEBLOOM_ABUSE_SECRET") or str(app.secret_key)
+SYNC_JOBS = (
+    os.environ.get("WEBLOOM_SYNC_JOBS", "").lower() in {"1","true","yes"}
+    or bool(os.environ.get("VERCEL"))
+)
 
 _jobs = {}
 _jobs_lock = threading.Lock()
+
+
+def _hmac_key(value: str) -> str:
+    secret = ABUSE_SECRET.encode("utf-8") if isinstance(ABUSE_SECRET, str) else bytes(ABUSE_SECRET)
+    return hmac.new(secret, value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _network_trial_key() -> str | None:
+    raw = (request.headers.get("X-Forwarded-For") or request.remote_addr or "").split(",")[0].strip()
+    if not raw:
+        return None
+    try:
+        addr = ipaddress.ip_address(raw)
+        prefix = 24 if addr.version == 4 else 64
+        bucket = ipaddress.ip_network(f"{addr}/{prefix}", strict=False)
+        return _hmac_key(str(bucket.network_address) + f"/{prefix}")
+    except ValueError:
+        return None
+
+
+def _device_trial_key():
+    device_id = request.cookies.get("wl_device")
+    is_new = False
+    if not device_id or len(device_id) < 24:
+        device_id = uuid.uuid4().hex
+        is_new = True
+    return _hmac_key(device_id), device_id, is_new
+
+
+def _with_device_cookie(response, device_id=None):
+    existing = request.cookies.get("wl_device")
+    if existing and len(existing) >= 24:
+        return response
+    device_id = device_id or uuid.uuid4().hex
+    response.set_cookie(
+        "wl_device",
+        device_id,
+        max_age=60 * 60 * 24 * 365,
+        httponly=True,
+        secure=app.config.get("SESSION_COOKIE_SECURE", True),
+        samesite="Lax",
+    )
+    return response
 
 
 def _validate_public_url(target_url: str) -> None:
@@ -240,6 +292,8 @@ def run_job(job_id):
                 error=str(exc),
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
+            if job.get("entitlement_reason") == "free" and job.get("trial_key"):
+                restore_free_capture(job.get("user_id"), job.get("trial_key"))
 
 
 @app.get("/")
@@ -357,6 +411,20 @@ def api_signin():
         return jsonify({"ok": False, "error": str(exc)}), 401
 
 
+@app.post("/api/auth/recover")
+def api_recover():
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    if "@" not in email:
+        return jsonify({"ok": False, "error": "Enter a valid email address."}), 400
+    try:
+        redirect_to = (PUBLIC_APP_URL or request.host_url.rstrip("/")) + "/signin"
+        auth_recover(email, redirect_to=redirect_to)
+        return jsonify({"ok": True})
+    except (ValueError, RuntimeError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
 @app.post("/api/auth/signout")
 def api_signout():
     clear_login_session()
@@ -366,9 +434,8 @@ def api_signout():
 @app.get("/api/me")
 def api_me():
     ident = current_identity()
-    if not ident:
-        return jsonify({"authenticated": False}), 200
-    return jsonify({"authenticated": True, "user": ident})
+    response = jsonify({"authenticated": bool(ident), **({"user": ident} if ident else {})})
+    return _with_device_cookie(response)
 
 
 @app.get("/api/projects")
@@ -495,8 +562,14 @@ def clone():
 
     if not supabase_ready():
         return jsonify({"ok": False, "error": "Database/auth service is not configured yet."}), 503
+    trial_key, device_id, _ = _device_trial_key()
+    network_key = _network_trial_key()
     try:
-        entitlement = consume_capture_entitlement(request.webloom_user["id"])
+        entitlement = consume_capture_entitlement(
+            request.webloom_user["id"],
+            trial_key,
+            network_key,
+        )
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
     if not entitlement.get("allowed"):
@@ -520,13 +593,24 @@ def clone():
         "error": None,
         "log": "",
         "user_id": request.webloom_user["id"],
+        "entitlement_reason": entitlement.get("reason"),
+        "trial_key": trial_key,
     }
 
     with _jobs_lock:
         _jobs[job_id] = job
 
+    if SYNC_JOBS:
+        run_job(job_id)
+        with _jobs_lock:
+            finished = _jobs.get(job_id, job)
+        status_code = 201 if finished.get("status") == "done" else 500
+        response = jsonify({"ok": finished.get("status") == "done", "job": job_public(finished)})
+        return _with_device_cookie(response, device_id), status_code
+
     threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
-    return jsonify({"ok": True, "job": job_public(job)}), 202
+    response = jsonify({"ok": True, "job": job_public(job)})
+    return _with_device_cookie(response, device_id), 202
 
 
 @app.get("/api/jobs")
@@ -546,9 +630,25 @@ def jobs():
 def job_status(job_id):
     with _jobs_lock:
         job = _jobs.get(job_id)
-        if not job or job.get("user_id") != request.webloom_user["id"]:
-            abort(404)
-        return jsonify({"job": job_public(job)})
+        if job and job.get("user_id") == request.webloom_user["id"]:
+            return jsonify({"job": job_public(job)})
+
+    project = get_project(request.webloom_user["id"], job_id) if supabase_ready() else None
+    if not project:
+        abort(404)
+    return jsonify({"job": {
+        "id": project["id"],
+        "url": project["source_url"],
+        "status": project["status"],
+        "created_at": project.get("created_at"),
+        "finished_at": project.get("finished_at"),
+        "files": project.get("file_count", 0),
+        "bytes": project.get("byte_count", 0),
+        "failed": project.get("failed_count", 0),
+        "error": project.get("error"),
+        "preview_url": f"/preview/{job_id}/" if project["status"] == "done" else None,
+        "download_url": f"/api/jobs/{job_id}/download" if project["status"] == "done" else None,
+    }})
 
 
 @app.get("/api/jobs/<job_id>/download")
