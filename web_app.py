@@ -357,11 +357,12 @@ def run_job(job_id):
                     continue
                 rel = file_path.relative_to(output_dir).as_posix()
                 mime = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
-                storage_upload_file(f"{storage_prefix}/frontend/{rel}", file_path, mime)
+                storage_upload_file(f"{storage_prefix}/frontend/{rel}", file_path, mime, token=job.get("auth_token"))
             storage_upload_file(
                 f"{storage_prefix}/webloom-project.zip",
                 archive_path,
                 "application/zip",
+                token=job.get("auth_token"),
             )
 
         with _jobs_lock:
@@ -375,6 +376,7 @@ def run_job(job_id):
         if supabase_ready():
             update_project(
                 job_id,
+                token=job.get("auth_token"),
                 status="done",
                 file_count=scraper.processed_count,
                 byte_count=scraper.total_bytes,
@@ -400,12 +402,13 @@ def run_job(job_id):
         if supabase_ready():
             update_project(
                 job_id,
+                token=job.get("auth_token"),
                 status="error",
                 error=str(exc),
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
             if job.get("entitlement_reason") == "free" and job.get("trial_key"):
-                restore_free_capture(job.get("user_id"), job.get("trial_key"))
+                restore_free_capture(job.get("user_id"), job.get("trial_key"), token=job.get("auth_token"))
 
 
 @app.get("/")
@@ -752,6 +755,7 @@ def clone():
             job_id,
             target,
             engine="webloom-deep" if deep_assets else "webloom-standard",
+            token=session.get("access_token"),
         )
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
@@ -773,6 +777,7 @@ def clone():
         "deep_assets": deep_assets,
         "max_files": max_files,
         "max_bytes": max_bytes,
+        "auth_token": session.get("access_token"),
     }
 
     with _jobs_lock:
