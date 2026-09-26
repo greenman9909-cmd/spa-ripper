@@ -227,3 +227,25 @@ options:
 
 ## 📄 License
 MIT License
+
+
+## Higgsfield Seedance 2.5 API
+
+WebLoom includes a minimal Python SDK smoke test in `main.py` using the official
+`higgsfield-client` package and the model
+`bytedance/seedance-2.5/text-to-video`.
+
+1. Copy `.env.example` to `.env.local`.
+2. Put a freshly rotated Higgsfield credential in `.env.local`:
+   `HF_KEY=key-id:key-secret`
+3. Install dependencies:
+   `python -m pip install -r requirements.txt`
+4. Run:
+   `python main.py`
+
+The script requests a 5 second, 720p, 16:9 video with the prompt
+"A cinematic scene at sunset" and prints only the completed video URL.
+Failed, cancelled, moderated/NSFW, or URL-less results exit with an error instead
+of being reported as success.
+
+`.env.local` is ignored by Git. Never commit API credentials.
