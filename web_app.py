@@ -88,6 +88,14 @@ _jobs = {}
 _jobs_lock = threading.Lock()
 
 
+@app.after_request
+def persist_refreshed_auth(response):
+    auth_state = getattr(request, "webloom_refreshed_auth", None)
+    if auth_state:
+        return apply_auth_cookies(response, auth_state)
+    return response
+
+
 def _hmac_key(value: str) -> str:
     secret = ABUSE_SECRET.encode("utf-8") if isinstance(ABUSE_SECRET, str) else bytes(ABUSE_SECRET)
     return hmac.new(secret, value.encode("utf-8"), hashlib.sha256).hexdigest()
