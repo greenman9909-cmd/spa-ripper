@@ -28,9 +28,9 @@ from webloom_integrations import (
     clear_login_session,
     current_identity,
     require_user,
+    require_identity,
     require_owner,
-    consume_capture_entitlement,
-    create_project,
+    begin_capture,
     update_project,
     list_projects,
     get_project,
@@ -38,9 +38,8 @@ from webloom_integrations import (
     supabase_ready,
     storage_upload_file,
     storage_download,
-    restore_free_capture,
+    restore_failed_free_capture,
     auth_recover,
-    update_user_profile,
 )
 
 
@@ -407,8 +406,8 @@ def run_job(job_id):
                 error=str(exc),
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
-            if job.get("entitlement_reason") == "free" and job.get("trial_key"):
-                restore_free_capture(job.get("user_id"), job.get("trial_key"), token=job.get("auth_token"))
+            if job.get("entitlement_reason") == "free":
+                restore_failed_free_capture(job_id, token=job.get("auth_token"))
 
 
 @app.get("/")
@@ -710,7 +709,7 @@ def api_admin_rekt():
 
 
 @app.post("/api/clone")
-@require_user
+@require_identity
 def clone():
     payload = request.get_json(silent=True) or {}
     try:
@@ -720,45 +719,59 @@ def clone():
 
     if not supabase_ready():
         return jsonify({"ok": False, "error": "Database/auth service is not configured yet."}), 503
-    trial_key, device_id, _ = _device_trial_key()
-    network_key = _network_trial_key()
-    try:
-        entitlement = consume_capture_entitlement(
-            request.webloom_user["id"],
-            trial_key,
-            network_key,
-        )
-    except RuntimeError as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 503
-    if not entitlement.get("allowed"):
-        return jsonify({"ok": False, "error": "Your free capture has been used. Upgrade to Pro to continue.", "upgrade_required": True}), 402
 
     user = request.webloom_user
-    settings = user.get("settings") or {}
-    if user.get("role") == "owner":
-        deep_assets = True
-        max_files = 2000
-        max_bytes = 500 * 1024 * 1024
-    elif user.get("plan") == "pro" and user.get("subscription_status") in {"active", "trialing"}:
-        deep_assets = settings.get("capture_mode") == "deep"
-        max_files = 1000
-        max_bytes = 250 * 1024 * 1024
-    else:
-        deep_assets = False
-        max_files = 250
-        max_bytes = 50 * 1024 * 1024
-
+    network_key = _network_trial_key()
     job_id = str(uuid.uuid4())
+
     try:
-        create_project(
-            user["id"],
+        entitlement = begin_capture(
             job_id,
             target,
-            engine="webloom-deep" if deep_assets else "webloom-standard",
+            network_hash=network_key,
             token=session.get("access_token"),
         )
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
+
+    if not entitlement.get("allowed"):
+        reason = entitlement.get("reason")
+        if reason == "network_limit":
+            message = "The free capture limit for this network has been reached. Sign in with Pro to continue."
+        else:
+            message = "Your free capture has been used. Upgrade to Pro to continue."
+        return jsonify({
+            "ok": False,
+            "error": message,
+            "upgrade_required": True,
+            "reason": reason,
+        }), 402
+
+    is_paid = (
+        user.get("role") == "owner"
+        or (
+            user.get("plan") == "pro"
+            and user.get("subscription_status") in {"active", "trialing"}
+        )
+    )
+
+    deep_assets = bool(is_paid)
+    max_files = 2000 if user.get("role") == "owner" else (1000 if is_paid else 250)
+    max_bytes = (
+        500 * 1024 * 1024
+        if user.get("role") == "owner"
+        else (250 * 1024 * 1024 if is_paid else 50 * 1024 * 1024)
+    )
+
+    update_project(
+        job_id,
+        token=session.get("access_token"),
+        engine="webloom-deep" if deep_assets else "webloom-standard",
+        metadata={
+            "capture_mode": "deep" if deep_assets else "standard",
+            "anonymous": bool(user.get("is_anonymous")),
+        },
+    )
 
     job = {
         "id": job_id,
@@ -771,9 +784,8 @@ def clone():
         "failed": 0,
         "error": None,
         "log": "",
-        "user_id": request.webloom_user["id"],
+        "user_id": user["id"],
         "entitlement_reason": entitlement.get("reason"),
-        "trial_key": trial_key,
         "deep_assets": deep_assets,
         "max_files": max_files,
         "max_bytes": max_bytes,
@@ -788,16 +800,14 @@ def clone():
         with _jobs_lock:
             finished = _jobs.get(job_id, job)
         status_code = 201 if finished.get("status") == "done" else 500
-        response = jsonify({
+        return jsonify({
             "ok": finished.get("status") == "done",
             "job": job_public(finished),
             **({"error": finished.get("error") or "Capture failed."} if finished.get("status") != "done" else {}),
-        })
-        return _with_device_cookie(response, device_id), status_code
+        }), status_code
 
     threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
-    response = jsonify({"ok": True, "job": job_public(job)})
-    return _with_device_cookie(response, device_id), 202
+    return jsonify({"ok": True, "job": job_public(job)}), 202
 
 
 @app.get("/api/jobs")
