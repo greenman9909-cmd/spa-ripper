@@ -304,7 +304,7 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
             const d=await apiPost("/api/billing/portal");
             location.href=d.url;
           }catch(e){
-            upgrade.disabled=false;upgrade.textContent=old;alert(e.message);
+            upgrade.disabled=false;upgrade.textContent=old;if(notice){notice.textContent=e.message;notice.classList.add("error");}
           }
         });
       }
@@ -333,7 +333,7 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
             location.href="/signup?next="+encodeURIComponent("/billing");
             return;
           }
-          upgrade.disabled=false;upgrade.textContent=old;alert(e.message);
+          upgrade.disabled=false;upgrade.textContent=old;if(notice){notice.textContent=e.message;notice.classList.add("error");}
         }
       });
     }
