@@ -381,7 +381,12 @@ def run_job(job_id):
                 failed_count=len(scraper.failed_urls),
                 preview_path=f"/preview/{job_id}/",
                 archive_path=f"projects/{job.get('user_id')}/{job_id}/webloom-project.zip",
-                metadata={"storage_prefix": f"projects/{job.get('user_id')}/{job_id}"},
+                metadata={
+                    "storage_prefix": f"projects/{job.get('user_id')}/{job_id}",
+                    "capture_mode": "deep" if job.get("deep_assets") else "standard",
+                    "max_files": job.get("max_files"),
+                    "max_bytes": job.get("max_bytes"),
+                },
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
 
@@ -725,9 +730,29 @@ def clone():
     if not entitlement.get("allowed"):
         return jsonify({"ok": False, "error": "Your free capture has been used. Upgrade to Pro to continue.", "upgrade_required": True}), 402
 
+    user = request.webloom_user
+    settings = user.get("settings") or {}
+    if user.get("role") == "owner":
+        deep_assets = True
+        max_files = 2000
+        max_bytes = 500 * 1024 * 1024
+    elif user.get("plan") == "pro" and user.get("subscription_status") in {"active", "trialing"}:
+        deep_assets = settings.get("capture_mode") == "deep"
+        max_files = 1000
+        max_bytes = 250 * 1024 * 1024
+    else:
+        deep_assets = False
+        max_files = 250
+        max_bytes = 50 * 1024 * 1024
+
     job_id = str(uuid.uuid4())
     try:
-        create_project(request.webloom_user["id"], job_id, target)
+        create_project(
+            user["id"],
+            job_id,
+            target,
+            engine="webloom-deep" if deep_assets else "webloom-standard",
+        )
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
 
@@ -745,6 +770,9 @@ def clone():
         "user_id": request.webloom_user["id"],
         "entitlement_reason": entitlement.get("reason"),
         "trial_key": trial_key,
+        "deep_assets": deep_assets,
+        "max_files": max_files,
+        "max_bytes": max_bytes,
     }
 
     with _jobs_lock:
