@@ -116,7 +116,7 @@
       <div class="links">
         <a href="#features">Features</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
       </div>
-      <div class="navcta"><button class="btn">Sign in</button><a class="btn primary" href="#pricing"><span>Start free</span><span class="cta-arrow">→</span></a></div>
+      <div class="navcta"><a class="btn" href="/signin">Sign in</a><a class="btn primary" href="/new"><span>Start free</span><span class="cta-arrow">→</span></a></div>
     </nav>
   </div></header>
 
@@ -132,7 +132,7 @@
               <svg viewBox="0 0 24 24" fill="none"><path d="M10.4 13.6a4.5 4.5 0 0 0 6.4 0l2.8-2.8a4.5 4.5 0 1 0-6.4-6.4l-1.6 1.6"/><path d="M13.6 10.4a4.5 4.5 0 0 0-6.4 0l-2.8 2.8a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></svg>
               <input placeholder="https://example.com" aria-label="Website URL" />
             </label>
-            <button class="btn primary" type="button"><span>Start your free clone</span><span class="cta-arrow">→</span></button>
+            <a class="btn primary" href="/new"><span>Start your free clone</span><span class="cta-arrow">→</span></a>
             <a class="btn" href="#pricing">Pro · €2.99/mo</a>
           </div>
           <div class="subline">
@@ -220,12 +220,12 @@
             <div class="money">€0 <small>forever</small></div>
             <div class="price-note">No credit card required.</div>
             <div class="ul"><div class="li"><span class="tick">✓</span>1 website clone total</div><div class="li"><span class="tick">✓</span>Live preview</div><div class="li"><span class="tick">✓</span>Downloadable files</div><div class="li"><span class="tick">✓</span>Metadata and sitemap</div></div>
-            <button class="btn free-cta"><span>Start my free clone</span><span class="cta-arrow">→</span></button>
+            <a class="btn free-cta" href="/new"><span>Start my free clone</span><span class="cta-arrow">→</span></a>
           </article>
           <article class="plan pro">
             <span class="badge">Best value</span><div class="plan-kicker">Unlimited access</div><h3>WebLoom Pro</h3><div class="money">€2.99 <small>per month</small></div><div class="price-note">Cancel anytime.</div>
             <div class="ul"><div class="li"><span class="tick">✓</span>Unlimited website clones</div><div class="li"><span class="tick">✓</span>All extraction features</div><div class="li"><span class="tick">✓</span>ZIP exports and live preview</div><div class="li"><span class="tick">✓</span>Project history</div></div>
-            <button class="btn primary" style="width:100%"><span>Unlock Pro</span><span class="cta-arrow">→</span></button>
+            <a class="btn primary" style="width:100%" href="/billing"><span>Unlock Pro</span><span class="cta-arrow">→</span></a>
           </article>
         </div>
         <aside class="safety" id="faq">
@@ -238,7 +238,7 @@
     </section>
   </main>
 
-  <footer><div class="wrap foot"><span>© 2026 WebLoom</span><span>Capture public pages responsibly · Preview · Inspect · Export</span></div></footer>
+  <footer><div class="wrap foot"><span>© 2026 WebLoom</span><span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · Capture public pages responsibly</span></div></footer>
 <script>
     const revealObserver = "IntersectionObserver" in window
       ? new IntersectionObserver((entries) => {
