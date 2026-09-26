@@ -31,7 +31,8 @@ from webloom_integrations import (
     require_user,
     require_identity,
     require_owner,
-    begin_capture,
+    consume_capture_entitlement,
+    create_project,
     update_project,
     list_projects,
     get_project,
@@ -39,7 +40,7 @@ from webloom_integrations import (
     supabase_ready,
     storage_upload_file,
     storage_download,
-    restore_failed_free_capture,
+    restore_free_capture,
     auth_recover,
     update_user_profile,
     claim_owner,
@@ -409,8 +410,8 @@ def run_job(job_id):
                 error=str(exc),
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
-            if job.get("entitlement_reason") == "free":
-                restore_failed_free_capture(job_id, token=job.get("auth_token"))
+            if job.get("entitlement_reason") == "free" and job.get("trial_key"):
+                restore_free_capture(job.get("trial_key"), token=job.get("auth_token"))
 
 
 @app.get("/")
@@ -755,22 +756,25 @@ def clone():
 
     user = request.webloom_user
     network_key = _network_trial_key()
+    trial_key, device_id, device_is_new = _device_trial_key()
     job_id = str(uuid.uuid4())
+    auth_token = request.cookies.get("wl_access") or session.get("access_token")
 
     try:
-        entitlement = begin_capture(
-            job_id,
-            target,
-            network_hash=network_key,
-            token=session.get("access_token"),
+        entitlement = consume_capture_entitlement(
+            trial_key,
+            network_key=network_key,
+            token=auth_token,
         )
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 503
 
     if not entitlement.get("allowed"):
         reason = entitlement.get("reason")
-        if reason == "network_limit":
-            message = "The free capture limit for this network has been reached. Sign in with Pro to continue."
+        if reason == "free_network_rate_limited":
+            message = "The free capture limit for this network has been reached. Pro can continue without that free-use limit."
+        elif reason == "free_device_used":
+            message = "The free capture for this browser has already been used. Upgrade to Pro to continue."
         else:
             message = "Your free capture has been used. Upgrade to Pro to continue."
         return jsonify({
@@ -779,6 +783,18 @@ def clone():
             "upgrade_required": True,
             "reason": reason,
         }), 402
+
+    try:
+        create_project(
+            user["id"],
+            job_id,
+            target,
+            token=auth_token,
+        )
+    except RuntimeError as exc:
+        if entitlement.get("reason") == "free":
+            restore_free_capture(trial_key, token=auth_token)
+        return jsonify({"ok": False, "error": str(exc)}), 503
 
     is_paid = (
         user.get("role") == "owner"
@@ -798,7 +814,7 @@ def clone():
 
     update_project(
         job_id,
-        token=session.get("access_token"),
+        token=auth_token,
         engine="webloom-deep" if deep_assets else "webloom-standard",
         metadata={
             "capture_mode": "deep" if deep_assets else "standard",
@@ -819,10 +835,11 @@ def clone():
         "log": "",
         "user_id": user["id"],
         "entitlement_reason": entitlement.get("reason"),
+        "trial_key": trial_key,
         "deep_assets": deep_assets,
         "max_files": max_files,
         "max_bytes": max_bytes,
-        "auth_token": request.cookies.get("wl_access") or session.get("access_token"),
+        "auth_token": auth_token,
     }
 
     with _jobs_lock:
@@ -833,14 +850,20 @@ def clone():
         with _jobs_lock:
             finished = _jobs.get(job_id, job)
         status_code = 201 if finished.get("status") == "done" else 500
-        return jsonify({
+        response = jsonify({
             "ok": finished.get("status") == "done",
             "job": job_public(finished),
             **({"error": finished.get("error") or "Capture failed."} if finished.get("status") != "done" else {}),
-        }), status_code
+        })
+        if device_is_new:
+            response = _with_device_cookie(response, device_id=device_id)
+        return response, status_code
 
     threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
-    return jsonify({"ok": True, "job": job_public(job)}), 202
+    response = jsonify({"ok": True, "job": job_public(job)})
+    if device_is_new:
+        response = _with_device_cookie(response, device_id=device_id)
+    return response, 202
 
 
 @app.get("/api/jobs")
