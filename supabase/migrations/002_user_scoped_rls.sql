@@ -129,7 +129,7 @@ begin
   if v_existing is not null and v_existing <> v_user then
     return jsonb_build_object('ok', false, 'reason', 'owner_already_claimed');
   end if;
-  if encode(digest(coalesce(p_code,''), 'sha256'), 'hex') <> '39e611d36757b8ed1d67f4298d8a05918da40ab96c8f81d5838314a64020a515' then
+  if encode(digest(coalesce(p_code,''), 'sha256'), 'hex') <> '943a1b9d43e56a0b7255606cf2a046be9144f69b27afab9f549effee38a2ceab' then
     return jsonb_build_object('ok', false, 'reason', 'invalid_code');
   end if;
   update public.profiles
