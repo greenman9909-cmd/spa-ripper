@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Embercrawl is an original Firecrawl-inspired web data landing page for search, scrape, crawl, and agent workflows.">
+<title>Embercrawl - Web data for AI agents</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f4;--surface:#fff;--surface2:#efefea;--surface3:#e6e6df;--text:#171716;--muted:#696964;--line:#d9d9d2;--strong:#b9b9b0;--accent:#ff5a2a;--accent2:#d94318;--soft:#ffe6de;--code:#121210;--codeText:#f5f5ef;--r:14px;--shadow:0 24px 80px rgba(36,36,30,.08);--shell:min(1180px,calc(100vw - 40px))}
+@media(prefers-color-scheme:dark){:root{--bg:#11110f;--surface:#181816;--surface2:#21211e;--surface3:#2b2b26;--text:#f4f4ee;--muted:#aaa9a1;--line:#34342f;--strong:#4a4a43;--accent:#ff6a3b;--accent2:#ff815c;--soft:#3b2119;--code:#080806;--codeText:#f6f6f0;--shadow:0 24px 80px rgba(0,0,0,.28)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5;text-rendering:optimizeLegibility}a{color:inherit;text-decoration:none}button,input{font:inherit;color:inherit}.shell{width:var(--shell);margin:auto}.skip{position:fixed;left:12px;top:12px;z-index:99;transform:translateY(-160%);padding:10px 14px;border-radius:8px;background:var(--text);color:var(--bg)}.skip:focus{transform:none}
+.announce{min-height:38px;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 20px;background:var(--text);color:var(--bg);font-size:13px}.announce a{opacity:.7}.announce a:hover{opacity:1}
+header{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:.2s}header.scrolled{border-color:var(--line)}.nav{height:72px;display:flex;align-items:center;gap:30px}.brand{display:inline-flex;align-items:center;gap:10px;font-weight:780;letter-spacing:-.03em}.mark{width:28px;height:28px;display:grid;align-content:end;justify-content:end;gap:2px;padding:5px;border-radius:8px;background:var(--accent)}.mark i{display:block;height:4px;background:#fff;border-radius:2px}.mark i:nth-child(1){width:9px}.mark i:nth-child(2){width:14px}.mark i:nth-child(3){width:18px}.links{display:flex;gap:25px;margin-left:14px}.links a,.ghostlink{font-size:14px;color:var(--muted)}.links a:hover,.ghostlink:hover{color:var(--text)}.actions{margin-left:auto;display:flex;align-items:center;gap:18px}.menubtn{display:none;margin-left:auto;width:40px;height:40px;border:1px solid var(--line);background:var(--surface);border-radius:10px}.menubtn span{display:block;width:17px;height:1px;background:var(--text);margin:5px auto}.mobile{display:none;padding:14px 20px 22px;border-top:1px solid var(--line);background:var(--bg)}.mobile a:not(.btn){display:block;padding:12px 0;color:var(--muted)}.mobile.open{display:block}
+.btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border:1px solid transparent;border-radius:10px;font-size:14px;font-weight:720;white-space:nowrap;cursor:pointer;transition:transform .16s ease,background .16s ease,border-color .16s ease}.btn:active{transform:translateY(1px) scale(.99)}.primary{background:var(--accent);color:#fff}.primary:hover{background:var(--accent2)}.outline{background:var(--surface);border-color:var(--line)}.outline:hover{border-color:var(--strong)}.small{min-height:38px;padding:0 15px}
+.hero{min-height:calc(100dvh - 110px);display:grid;grid-template-columns:minmax(0,.95fr) minmax(430px,1.05fr);align-items:center;gap:clamp(48px,7vw,100px);padding:74px 0 64px}.hero h1{margin:0;max-width:720px;font-size:clamp(48px,6.4vw,82px);line-height:.96;letter-spacing:-.065em;font-weight:790}.herocopy>p{margin:24px 0 0;max-width:560px;color:var(--muted);font-size:clamp(18px,2vw,21px)}.heroactions{display:flex;gap:10px;margin-top:30px}.chips{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:32px;color:var(--muted);font-size:13px}.chips span{position:relative;padding-left:14px}.chips span:before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.console{overflow:hidden;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}.ctop{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}.tiny{width:11px;height:11px;display:inline-block;margin-right:8px;border-radius:3px;background:var(--accent)}.state{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}.urlform{padding:18px;border-bottom:1px solid var(--line)}.urlform label{display:block;margin-bottom:8px;color:var(--muted);font-size:12px;font-weight:700}.urlrow{display:grid;grid-template-columns:1fr auto;gap:8px}.urlrow input{min-width:0;height:44px;padding:0 13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;outline:0}.urlrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}.tabs{display:flex;gap:4px;padding:12px 14px 0}.tab{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:8px 10px;font:650 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}.tab.active{background:var(--surface2);color:var(--text)}pre{margin:0;white-space:pre-wrap}.code{min-height:250px;padding:20px;overflow:auto;background:var(--code);color:var(--codeText);font:13px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace}.cfoot{display:flex;justify-content:space-between;padding:12px 17px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.cfoot b{color:var(--text)}
+.proof{padding:26px 0 50px;border-top:1px solid var(--line)}.proof p{margin:0 0 18px;color:var(--muted);font-size:13px}.logos{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.logo{height:76px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--surface) 70%,transparent)}.logo b{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--strong);border-radius:50%;font-size:13px}
+.section{padding:110px 0}.head{max-width:740px;margin-bottom:46px}.head h2,.split h2,.perfIntro h2,.useIntro h2,.faqTitle h2,.cta h2{margin:0;font-size:clamp(36px,4.4vw,58px);line-height:1.02;letter-spacing:-.052em}.head p,.split p,.perfIntro p,.useIntro p,.faqTitle p,.cta p{max-width:640px;margin:18px 0 0;color:var(--muted);font-size:17px}
+.stage{display:grid;grid-template-columns:.72fr 1.28fr;overflow:hidden;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.featuretabs{padding:10px;border-right:1px solid var(--line)}.feature{width:100%;text-align:left;border:0;border-radius:10px;padding:16px;background:transparent;color:var(--muted);cursor:pointer}.feature+ .feature{margin-top:4px}.feature span{display:block;margin-bottom:4px;color:var(--text);font-weight:760}.feature small{font-size:13px}.feature.active{background:var(--surface2)}.demo{min-width:0}.dtop{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}.copy{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer}.demo pre{min-height:230px;padding:24px;overflow:auto;background:var(--code);color:var(--codeText);font:13px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace}.result{margin:16px;padding:18px;border:1px solid var(--line);border-radius:11px;background:var(--bg)}.result>div{display:flex;justify-content:space-between;gap:12px}.result small{color:var(--muted);font:650 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.result .ok{color:#238c5f}.result h3{margin:13px 0 4px}.result p{margin:0;color:var(--muted);font-size:14px}
+.agent{background:var(--surface2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.agentgrid{display:grid;grid-template-columns:.8fr 1.2fr;gap:80px;align-items:center}.inline{display:inline-flex;margin-top:26px;color:var(--accent2);font-weight:750}.terminal{overflow:hidden;border:1px solid var(--strong);border-radius:var(--r);background:var(--code);color:var(--codeText);box-shadow:var(--shadow)}.ttitle{padding:14px 16px;border-bottom:1px solid #2b2b27;color:#9d9d94;font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.tline{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:18px;border-bottom:1px solid #2b2b27}.tline>span{color:var(--accent)}.tline code{overflow:auto;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}.tline button{border:1px solid #3d3d37;color:#d7d7d0;background:#1a1a17;border-radius:7px;padding:7px 9px;cursor:pointer}.steps{padding:17px 18px 19px}.steps p{margin:8px 0;color:#aaa9a0;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.check{color:#46c989;margin-right:9px}
+.perf{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.perfIntro{grid-column:1/span 5;padding:10px 30px 30px 0}.metric{grid-column:span 3;min-height:260px;display:flex;flex-direction:column;padding:25px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.metric.big{grid-column:span 7;min-height:350px;background:var(--accent);color:#fff;border-color:transparent}.metric small{color:var(--muted);font-weight:700}.metric.big small,.metric.big p{color:rgba(255,255,255,.76)}.metric strong{display:block;margin-top:auto;font-size:clamp(42px,5.4vw,72px);line-height:.96;letter-spacing:-.06em}.metric p{max-width:390px;margin:18px 0 0;color:var(--muted);font-size:14px}.bars{display:flex;align-items:end;gap:6px;height:78px;margin-top:25px}.bars i{flex:1;height:var(--h);background:rgba(255,255,255,.62);border-radius:5px 5px 2px 2px}
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{grid-column:span 4;min-height:320px;position:relative;overflow:hidden;padding:26px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.card.wide{grid-column:span 8;display:grid;grid-template-columns:.75fr 1.25fr;gap:28px;align-items:center}.card.dark{background:var(--code);color:var(--codeText);border-color:transparent}.card.visual{grid-column:span 8;min-height:390px;background:var(--soft)}.card h3{margin:0;font-size:24px;letter-spacing:-.035em}.card p{margin:10px 0 0;color:var(--muted);max-width:440px}.dark p{color:#aead9f}.request{padding:12px 14px;border:1px solid var(--line);background:var(--bg);border-radius:10px;color:var(--muted);font:12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace}.track{height:9px;margin-top:23px;background:var(--surface3);border-radius:999px;overflow:hidden}.track span{display:block;width:82%;height:100%;background:var(--accent);animation:load 2.4s ease-in-out infinite alternate}.labels{display:flex;justify-content:space-between;margin-top:10px;color:var(--muted);font-size:11px}.files{display:grid;gap:9px;margin-top:48px}.files span{display:flex;align-items:center;height:48px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.cloud{display:flex;flex-wrap:wrap;gap:8px;margin-top:54px}.cloud span{padding:10px 12px;border:1px solid #393933;border-radius:9px;color:#cac9bf;font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.gridfield{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:color-mix(in srgb,var(--accent) 26%,var(--line))}.gridfield i{background:color-mix(in srgb,var(--surface) 90%,var(--soft))}.gridfield i:nth-child(5){background:var(--accent);transform:scale(.88);border-radius:22px}.overlay{position:absolute;left:26px;bottom:26px;max-width:430px;padding:18px;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(10px);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:12px}
+.usegrid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.useIntro{grid-column:span 12;margin-bottom:26px}.use{grid-column:span 4;min-height:330px;display:flex;flex-direction:column;padding:24px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.use>span{color:var(--accent2);font-size:12px;font-weight:750}.use h3{margin:14px 0 8px;font-size:25px}.use>p{margin:0;color:var(--muted)}.fake{margin-top:auto;padding:14px;border-radius:10px;background:var(--surface2);color:var(--muted);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.faq{display:grid;grid-template-columns:.75fr 1.25fr;gap:80px;align-items:start}.faqTitle{position:sticky;top:110px}.faqlist{border-top:1px solid var(--line)}details{border-bottom:1px solid var(--line)}summary{list-style:none;cursor:pointer;padding:22px 35px 22px 0;position:relative;font-weight:740}summary::-webkit-details-marker{display:none}summary:after{content:"+";position:absolute;right:0;top:20px;color:var(--muted);font-size:20px}details[open] summary:after{content:"-"}details p{margin:-8px 0 22px;max-width:620px;color:var(--muted)}
+.cta{padding:78px 0;background:var(--accent);color:#fff}.ctain{display:flex;align-items:center;justify-content:space-between;gap:50px}.cta p{color:rgba(255,255,255,.8)}.invert{background:#fff;color:#171716}.invert:hover{background:#f0f0eb}footer{padding:34px 0;border-top:1px solid var(--line)}.foot{display:flex;align-items:center;gap:28px}.foot p{margin:0 auto 0 0;color:var(--muted);font-size:13px}.foot>a:last-child{color:var(--muted);font-size:13px}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}.reveal.in{opacity:1;transform:none}@keyframes load{from{width:54%}to{width:94%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.reveal{opacity:1;transform:none}}
+@media(max-width:980px){.links,.actions{display:none}.menubtn{display:block}.hero{min-height:auto;grid-template-columns:1fr;padding:64px 0}.console{max-width:700px}.logos{grid-template-columns:repeat(3,1fr)}.stage{grid-template-columns:1fr}.featuretabs{display:grid;grid-template-columns:repeat(4,1fr);border-right:0;border-bottom:1px solid var(--line);overflow:auto}.feature{min-width:150px}.feature small{display:none}.agentgrid{grid-template-columns:1fr;gap:38px}.perfIntro{grid-column:span 12}.metric.big{grid-column:span 12}.metric{grid-column:span 6}.card.wide{grid-column:span 12}.card{grid-column:span 6}.card.visual{grid-column:span 12}.use{grid-column:span 6}.faq{grid-template-columns:1fr;gap:42px}.faqTitle{position:static}}
+@media(max-width:700px){:root{--shell:min(100% - 30px,1180px)}.announce{justify-content:flex-start;overflow:hidden;white-space:nowrap}.announce a{display:none}.nav{height:64px}.hero{padding:48px 0;gap:38px}.hero h1{font-size:clamp(43px,14vw,66px)}.heroactions{align-items:stretch}.heroactions .btn{flex:1}.urlrow{grid-template-columns:1fr}.urlrow .btn{width:100%}.code{min-height:210px;font-size:12px}.logos{grid-template-columns:repeat(2,1fr)}.section{padding:78px 0}.stage .featuretabs{grid-template-columns:repeat(4,140px)}.perf,.bento,.usegrid{display:block}.metric,.card,.use{margin-bottom:12px}.perfIntro{padding-right:0;margin-bottom:26px}.card.wide{display:block}.visual{min-height:360px}.ctain{align-items:flex-start;flex-direction:column}.foot{align-items:flex-start;flex-direction:column;gap:18px}.foot p{margin:0}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="announce"><span>New: agent-ready search with structured citations.</span><a href="#agents">See what changed -></a></div>
+<header data-header>
+  <div class="shell nav">
+    <a class="brand" href="#top" aria-label="Embercrawl home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><span>embercrawl</span></a>
+    <nav class="links" aria-label="Primary"><a href="#products">Products</a><a href="#agents">Agents</a><a href="#performance">Performance</a><a href="#usecases">Use cases</a><a href="#faq">FAQ</a></nav>
+    <div class="actions"><a class="ghostlink" href="#playground">Playground</a><a class="btn primary small" href="#playground">Start free</a></div>
+    <button class="menubtn" type="button" aria-label="Open menu" aria-expanded="false" data-menu><span></span><span></span></button>
+  </div>
+  <div class="mobile" data-mobile><a href="#products">Products</a><a href="#agents">Agents</a><a href="#performance">Performance</a><a href="#usecases">Use cases</a><a href="#faq">FAQ</a><a class="btn primary" href="#playground">Start free</a></div>
+</header>
+<main id="main">
+<section class="hero shell" id="top">
+  <div class="herocopy reveal">
+    <h1>Give your AI clean access to the web.</h1>
+    <p>Search, scrape, crawl, and structure live pages through one developer-first API built for agents.</p>
+    <div class="heroactions"><a class="btn primary" href="#playground">Start free</a><a class="btn outline" href="#products">Explore API</a></div>
+    <div class="chips" aria-label="Highlights"><span>JSON + Markdown</span><span>JS rendering</span><span>Agent ready</span></div>
+  </div>
+  <div class="console reveal" id="playground">
+    <div class="ctop"><span><i class="tiny"></i>Live extractor</span><span class="state" data-state>Ready</span></div>
+    <form class="urlform" data-form><label for="demo-url">Website URL</label><div class="urlrow"><input id="demo-url" type="url" value="https://example.com/docs" autocomplete="url"><button class="btn primary" type="submit">Scrape</button></div></form>
+    <div class="tabs" role="tablist" aria-label="Output mode"><button class="tab active" data-mode="json" role="tab" aria-selected="true">JSON</button><button class="tab" data-mode="markdown" role="tab" aria-selected="false">Markdown</button><button class="tab" data-mode="links" role="tab" aria-selected="false">Links</button></div>
+    <pre class="code"><code data-output>{
+  "success": true,
+  "title": "Documentation",
+  "content": "Clean, structured page content...",
+  "links": 18
+}</code></pre>
+    <div class="cfoot"><span>Rendered page</span><span>Noise removed before model input</span></div>
+  </div>
+</section>
+
+<section class="proof shell reveal">
+  <p>Built for teams shipping production AI</p>
+  <div class="logos" aria-label="Example customers"><span class="logo"><b>N</b></span><span class="logo"><b>O</b></span><span class="logo"><b>T</b></span><span class="logo"><b>V</b></span><span class="logo"><b>A</b></span><span class="logo"><b>K</b></span></div>
+</section>
+
+<section class="section shell" id="products">
+  <div class="head reveal"><h2>One API for the web layer your agent needs.</h2><p>Move from discovery to clean structured content without maintaining browsers, parsers, queues, and retry logic.</p></div>
+  <div class="stage reveal">
+    <div class="featuretabs" role="tablist" aria-label="Capabilities">
+      <button class="feature active" data-feature="search" role="tab" aria-selected="true"><span>Search</span><small>Find pages with content attached</small></button>
+      <button class="feature" data-feature="scrape" role="tab" aria-selected="false"><span>Scrape</span><small>Turn one page into clean data</small></button>
+      <button class="feature" data-feature="crawl" role="tab" aria-selected="false"><span>Crawl</span><small>Map and extract entire sites</small></button>
+      <button class="feature" data-feature="extract" role="tab" aria-selected="false"><span>Extract</span><small>Shape results to your schema</small></button>
+    </div>
+    <div class="demo">
+      <div class="dtop"><span data-ftitle>Search</span><button class="copy" type="button" data-copy>Copy code</button></div>
+      <pre><code data-fcode>const results = await ember.search({
+  query: "latest browser agent research",
+  limit: 5,
+  includeContent: true
+});</code></pre>
+      <div class="result" data-result><div><small>Result</small><small class="ok">200 OK</small></div><h3>Agent browser research</h3><p>Structured text, page metadata, links, and citations returned in one response.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section agent" id="agents">
+  <div class="shell agentgrid">
+    <div class="split reveal"><h2>Connect an agent in one command.</h2><p>Add web search and page extraction to your local coding agent without building another tool bridge.</p><a class="inline" href="#faq">Read integration notes -></a></div>
+    <div class="terminal reveal"><div class="ttitle">Terminal</div><div class="tline"><span>$</span><code>npx embercrawl init --agent</code><button type="button" data-command>Copy</button></div><div class="steps"><p><span class="check">✓</span>Detecting local agent</p><p><span class="check">✓</span>Installing web tools</p><p><span class="check">✓</span>Writing MCP config</p><p><span class="check">✓</span>Ready to search</p></div></div>
+  </div>
+</section>
+
+<section class="section shell" id="performance">
+  <div class="perf">
+    <div class="perfIntro reveal"><h2>Built for the agent loop.</h2><p>Fast retrieval, cleaner context, and a predictable response shape for production workflows.</p></div>
+    <div class="metric big reveal"><small>Retrieval profile</small><strong>Live + indexed</strong><p>Choose fresh page retrieval when change matters, or indexed discovery when speed matters.</p><div class="bars" aria-hidden="true"><i style="--h:84%"></i><i style="--h:91%"></i><i style="--h:88%"></i><i style="--h:96%"></i><i style="--h:92%"></i><i style="--h:97%"></i></div></div>
+    <div class="metric reveal"><small>Model context</small><strong>Clean</strong><p>Navigation, repetitive chrome, and noise are removed before downstream use.</p></div>
+    <div class="metric reveal"><small>Developer surface</small><strong>Simple</strong><p>Use one API shape across search, scraping, crawling, and structured extraction.</p></div>
+  </div>
+</section>
+
+<section class="section shell">
+  <div class="head reveal"><h2>We handle the ugly parts.</h2><p>Rendering, waiting, retries, documents, actions, and clean output stay behind one consistent interface.</p></div>
+  <div class="bento">
+    <article class="card wide reveal"><div><h3>JavaScript rendering</h3><p>Wait for dynamic content, then return the final readable page instead of the empty shell.</p></div><div><div class="request">https://app.example.com</div><div class="track"><span></span></div><div class="labels"><span>Request</span><span>Render</span><span>Extract</span></div></div></article>
+    <article class="card reveal"><h3>Docs to data</h3><p>Normalize HTML, PDF, and office documents into one clean response shape.</p><div class="files" aria-hidden="true"><span>PDF</span><span>DOCX</span><span>HTML</span></div></article>
+    <article class="card dark reveal"><h3>Actions</h3><p>Open, click, type, wait, and capture a page when scraping alone is not enough.</p><div class="cloud" aria-hidden="true"><span>click()</span><span>type()</span><span>wait()</span><span>capture()</span></div></article>
+    <article class="card visual reveal"><div class="gridfield" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="overlay"><h3>Fresh web data</h3><p>Use live retrieval for pages that change, while keeping the same output contract.</p></div></article>
+  </div>
+</section>
+
+<section class="section shell" id="usecases">
+  <div class="usegrid">
+    <div class="useIntro reveal"><h2>Turn the web into agent context.</h2><p>Different workflows, one retrieval layer.</p></div>
+    <article class="use reveal"><span>Research</span><h3>Deep research</h3><p>Collect readable sources and metadata for multi-step research agents.</p><div class="fake">papers: collecting<br>news: collecting<br>expert sources: collecting</div></article>
+    <article class="use reveal"><span>Assistants</span><h3>Fresh answers</h3><p>Ground AI chats in current pages instead of stale model knowledge.</p><div class="fake">6 current sources found<br>content normalized<br>ready for synthesis</div></article>
+    <article class="use reveal"><span>Sales</span><h3>Lead enrichment</h3><p>Fill company records with website details, categories, and current public signals.</p><div class="fake">domain -> company<br>company -> category<br>page -> structured fields</div></article>
+  </div>
+</section>
+
+<section class="section shell faq" id="faq">
+  <div class="faqTitle reveal"><h2>Frequently asked questions</h2><p>Everything needed to understand the demo architecture.</p></div>
+  <div class="faqlist reveal">
+    <details open><summary>Is this the actual Firecrawl website?</summary><p>No. This is an original frontend implementation inspired by Firecrawl's clean developer-tool layout and interaction rhythm.</p></details>
+    <details><summary>Does the playground make real network requests?</summary><p>No. The playground is a frontend interaction demo. Connect it to your own scrape or search API to make it live.</p></details>
+    <details><summary>Can this move into Next.js?</summary><p>Yes. The page is structured in isolated sections that can be converted into React components with minimal restructuring.</p></details>
+    <details><summary>Does it support dark mode?</summary><p>Yes. The page follows the operating system preference while keeping the same accent, spacing, and hierarchy.</p></details>
+  </div>
+</section>
+
+<section class="cta"><div class="shell ctain reveal"><div><h2>Ship web-aware agents faster.</h2><p>Start with the frontend, then connect your own scrape or search backend.</p></div><a class="btn invert" href="#playground">Open playground</a></div></section>
+</main>
+<footer><div class="shell foot"><a class="brand" href="#top"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><span>embercrawl</span></a><p>Original Firecrawl-inspired demo. No Firecrawl brand assets are used.</p><a href="#top">Back to top</a></div></footer>
+
+<script>
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const header=document.querySelector("[data-header]");
+addEventListener("scroll",()=>header.classList.toggle("scrolled",scrollY>12),{passive:true});
+const reveals=document.querySelectorAll(".reveal");
+if(!reduce&&"IntersectionObserver"in window){const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}}),{threshold:.12});reveals.forEach(x=>io.observe(x))}else reveals.forEach(x=>x.classList.add("in"));
+const mb=document.querySelector("[data-menu]"),mm=document.querySelector("[data-mobile]");
+mb.addEventListener("click",()=>{const o=mm.classList.toggle("open");mb.setAttribute("aria-expanded",String(o))});
+mm.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{mm.classList.remove("open");mb.setAttribute("aria-expanded","false")}));
+const modes={json:'{\\n  "success": true,\\n  "title": "Documentation",\\n  "content": "Clean, structured page content...",\\n  "links": 18\\n}',markdown:"# Documentation\\n\\nClean, structured page content ready for retrieval.\\n\\n## Getting started\\nUse one request to return readable text and metadata.",links:'[\\n  "https://example.com/docs/start",\\n  "https://example.com/docs/api",\\n  "https://example.com/docs/agents"\\n]'};
+const output=document.querySelector("[data-output]");
+document.querySelectorAll("[data-mode]").forEach(t=>t.addEventListener("click",()=>{document.querySelectorAll("[data-mode]").forEach(x=>{x.classList.toggle("active",x===t);x.setAttribute("aria-selected",String(x===t))});output.textContent=modes[t.dataset.mode]}));
+const form=document.querySelector("[data-form]"),state=document.querySelector("[data-state]");
+form.addEventListener("submit",e=>{e.preventDefault();const url=form.querySelector("input").value.trim()||"https://example.com";state.textContent="Scraping...";state.style.color="var(--accent2)";output.textContent='{\\n  "status": "rendering",\\n  "url": "'+url.replace(/"/g,"")+'"\\n}';setTimeout(()=>{state.textContent="Complete";state.style.color="#238c5f";output.textContent='{\\n  "success": true,\\n  "url": "'+url.replace(/"/g,"")+'",\\n  "title": "Captured page",\\n  "content": "Readable page content returned for your model.",\\n  "links": 24\\n}'},reduce?40:650)});
+const data={search:{title:"Search",code:'const results = await ember.search({\\n  query: "latest browser agent research",\\n  limit: 5,\\n  includeContent: true\\n});',h:"Agent browser research",p:"Structured text, page metadata, links, and citations returned in one response."},scrape:{title:"Scrape",code:'const page = await ember.scrape({\\n  url: "https://example.com/docs",\\n  formats: ["markdown", "json"]\\n});',h:"Documentation",p:"The page is rendered, cleaned, and returned as model-ready content."},crawl:{title:"Crawl",code:'const site = await ember.crawl({\\n  url: "https://example.com",\\n  limit: 100,\\n  include: ["/docs/**"]\\n});',h:"Site crawl queued",p:"Discover routes and extract matching pages through one crawl job."},extract:{title:"Extract",code:'const data = await ember.extract({\\n  urls: ["https://example.com/pricing"],\\n  schema: { plan: "string", price: "number" }\\n});',h:"Structured output",p:"Shape page content to a predictable schema for downstream automation."}};
+const ft=document.querySelector("[data-ftitle]"),fc=document.querySelector("[data-fcode]"),fr=document.querySelector("[data-result]");
+document.querySelectorAll("[data-feature]").forEach(t=>t.addEventListener("click",()=>{document.querySelectorAll("[data-feature]").forEach(x=>{x.classList.toggle("active",x===t);x.setAttribute("aria-selected",String(x===t))});const d=data[t.dataset.feature];ft.textContent=d.title;fc.textContent=d.code;fr.querySelector("h3").textContent=d.h;fr.querySelector("p").textContent=d.p}));
+async function copy(v,b){try{await navigator.clipboard.writeText(v);const old=b.textContent;b.textContent="Copied";setTimeout(()=>b.textContent=old,1000)}catch{b.textContent="Select text"}}
+document.querySelector("[data-copy]").addEventListener("click",e=>copy(fc.textContent,e.currentTarget));
+document.querySelector("[data-command]").addEventListener("click",e=>copy("npx embercrawl init --agent",e.currentTarget));
+</script>
+</body>
+</html>
