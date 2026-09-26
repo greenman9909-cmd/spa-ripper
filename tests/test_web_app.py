@@ -16,8 +16,8 @@ class WebAppTests(unittest.TestCase):
     def test_homepage_renders_console(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"SPA-Ripper", response.data)
-        self.assertIn(b"Clone frontend", response.data)
+        self.assertIn(b"WebLoom", response.data)
+        self.assertIn(b"Capture the frontend", response.data)
 
     def test_private_loopback_target_is_blocked(self):
         with self.assertRaises(ValueError):
