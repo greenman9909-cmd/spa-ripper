@@ -111,3 +111,34 @@ using (bucket_id='webloom-projects' and (storage.foldername(name))[1]='projects'
 with check (bucket_id='webloom-projects' and (storage.foldername(name))[1]='projects' and (storage.foldername(name))[2]=auth.uid()::text);
 create policy "webloom storage delete own" on storage.objects for delete to authenticated
 using (bucket_id='webloom-projects' and (storage.foldername(name))[1]='projects' and (storage.foldername(name))[2]=auth.uid()::text);
+
+
+-- One-time owner bootstrap. Rotate the hash before first production claim.
+create or replace function public.claim_webloom_owner(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_existing uuid;
+begin
+  if v_user is null then raise exception 'authentication_required'; end if;
+  select id into v_existing from public.profiles where role='owner' limit 1;
+  if v_existing is not null and v_existing <> v_user then
+    return jsonb_build_object('ok', false, 'reason', 'owner_already_claimed');
+  end if;
+  if encode(digest(coalesce(p_code,''), 'sha256'), 'hex') <> '39e611d36757b8ed1d67f4298d8a05918da40ab96c8f81d5838314a64020a515' then
+    return jsonb_build_object('ok', false, 'reason', 'invalid_code');
+  end if;
+  update public.profiles
+  set role='owner', plan='pro', subscription_status='active',
+      free_capture_used=false, updated_at=now()
+  where id=v_user;
+  return jsonb_build_object('ok', true, 'role', 'owner', 'plan', 'pro');
+end;
+$$;
+revoke all on function public.claim_webloom_owner(text) from public;
+revoke execute on function public.claim_webloom_owner(text) from anon;
+grant execute on function public.claim_webloom_owner(text) to authenticated;
