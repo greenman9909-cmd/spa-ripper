@@ -183,11 +183,11 @@ def require_owner(fn):
         return fn(*args, **kwargs)
     return wrapped
 
-def consume_capture_entitlement(user_id, trial_key):
+def consume_capture_entitlement(user_id, trial_key, network_key=None):
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/consume_capture_entitlement",
         headers=_sb_headers(service=True),
-        json={"p_user": user_id, "p_trial_key": trial_key},
+        json={"p_user": user_id, "p_trial_key": trial_key, "p_network_key": network_key},
         timeout=20,
     )
     if not r.ok:
