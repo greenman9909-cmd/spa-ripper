@@ -9,9 +9,18 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
   const json = async (url, options={}) => {
-    const r = await fetch(url, options);
+    const r = await fetch(url, {credentials:"same-origin", ...options});
+    const raw = await r.text();
     let d = {};
-    try { d = await r.json(); } catch {}
+    if (raw) {
+      try { d = JSON.parse(raw); }
+      catch {
+        throw Object.assign(
+          new Error(r.ok ? "The server returned an invalid response." : "This deployment is not connected to the WebLoom backend."),
+          {status:r.status, data:{raw:raw.slice(0,180)}}
+        );
+      }
+    }
     if (!r.ok) throw Object.assign(new Error(d.error || "Request failed."), {status:r.status, data:d});
     return d;
   };
