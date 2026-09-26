@@ -159,6 +159,8 @@ def current_identity():
         "subscription_status": profile.get("subscription_status"),
         "free_capture_used": bool(profile.get("free_capture_used")),
         "stripe_customer_id": profile.get("stripe_customer_id"),
+        "display_name": profile.get("display_name"),
+        "settings": profile.get("settings") or {},
     }
 
 def require_user(fn):
@@ -255,6 +257,23 @@ def get_project(user_id, project_id):
         timeout=20,
     )
     return r.json() if r.ok else None
+
+def update_user_profile(user_id, fields):
+    allowed = {"display_name", "settings"}
+    payload = {k: v for k, v in (fields or {}).items() if k in allowed}
+    if not payload:
+        return profile_for(user_id)
+    r = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/profiles",
+        headers={**_sb_headers(service=True), "Prefer": "return=representation"},
+        params={"id": f"eq.{user_id}"},
+        json=payload,
+        timeout=20,
+    )
+    if not r.ok:
+        raise RuntimeError("Could not update account settings.")
+    rows = r.json()
+    return rows[0] if isinstance(rows, list) and rows else rows
 
 def set_subscription_state(user_id, customer_id, subscription_id, status):
     r = requests.post(
