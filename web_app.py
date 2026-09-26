@@ -37,6 +37,7 @@ from webloom_integrations import (
     storage_download,
     restore_free_capture,
     auth_recover,
+    update_user_profile,
 )
 
 
@@ -438,6 +439,49 @@ def api_me():
     return _with_device_cookie(response)
 
 
+@app.patch("/api/account")
+@require_user
+def api_account_update():
+    payload = request.get_json(silent=True) or {}
+    display_name = (payload.get("display_name") or "").strip()
+    if len(display_name) > 80:
+        return jsonify({"ok": False, "error": "Display name is too long."}), 400
+    profile = update_user_profile(
+        request.webloom_user["id"],
+        {"display_name": display_name or None},
+    )
+    return jsonify({"ok": True, "profile": profile})
+
+
+@app.patch("/api/settings")
+@require_user
+def api_settings_update():
+    payload = request.get_json(silent=True) or {}
+    current = request.webloom_user.get("settings") or {}
+    capture_mode = payload.get("capture_mode", current.get("capture_mode", "standard"))
+    export_format = payload.get("export_format", current.get("export_format", "zip"))
+    project_naming = payload.get("project_naming", current.get("project_naming", "hostname"))
+
+    if capture_mode not in {"standard", "deep"}:
+        return jsonify({"ok": False, "error": "Invalid capture mode."}), 400
+    if capture_mode == "deep" and request.webloom_user.get("role") != "owner" and request.webloom_user.get("plan") != "pro":
+        return jsonify({"ok": False, "error": "Deep capture is a Pro setting."}), 403
+    if export_format not in {"zip", "zip_metadata"}:
+        return jsonify({"ok": False, "error": "Invalid export format."}), 400
+    if project_naming not in {"hostname", "ask"}:
+        return jsonify({"ok": False, "error": "Invalid project naming option."}), 400
+
+    profile = update_user_profile(
+        request.webloom_user["id"],
+        {"settings": {
+            "capture_mode": capture_mode,
+            "export_format": export_format,
+            "project_naming": project_naming,
+        }},
+    )
+    return jsonify({"ok": True, "profile": profile})
+
+
 @app.get("/api/projects")
 @require_user
 def api_projects():
@@ -605,7 +649,11 @@ def clone():
         with _jobs_lock:
             finished = _jobs.get(job_id, job)
         status_code = 201 if finished.get("status") == "done" else 500
-        response = jsonify({"ok": finished.get("status") == "done", "job": job_public(finished)})
+        response = jsonify({
+            "ok": finished.get("status") == "done",
+            "job": job_public(finished),
+            **({"error": finished.get("error") or "Capture failed."} if finished.get("status") != "done" else {}),
+        })
         return _with_device_cookie(response, device_id), status_code
 
     threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
