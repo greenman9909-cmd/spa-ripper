@@ -128,6 +128,36 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     if(!u) return;
     const id=path.split("/")[2];
     if(!id) return;
+    const panel=$("#projectPanel")||$(".preview-box");
+    const tabs=$$("[data-project-tab]");
+    const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+    const previewBase="/preview/"+encodeURIComponent(id)+"/";
+    const cache={};
+    const loadJson=async file=>{
+      if(cache[file]) return cache[file];
+      const r=await fetch(previewBase+file,{credentials:"same-origin"});
+      if(!r.ok) throw new Error("Project data is not available yet.");
+      return cache[file]=await r.json();
+    };
+    const loadText=async file=>{
+      if(cache[file]) return cache[file];
+      const r=await fetch(previewBase+file,{credentials:"same-origin"});
+      if(!r.ok) throw new Error("Project data is not available yet.");
+      return cache[file]=await r.text();
+    };
+    const prettyBytes=n=>{
+      n=Number(n||0);
+      if(n<1024)return n+" B";
+      if(n<1048576)return (n/1024).toFixed(1)+" KB";
+      if(n<1073741824)return (n/1048576).toFixed(1)+" MB";
+      return (n/1073741824).toFixed(1)+" GB";
+    };
+    const extOf=file=>{
+      const n=(file||"").split("/").pop()||"";
+      const i=n.lastIndexOf(".");
+      return i>0?n.slice(i+1).toUpperCase():"FILE";
+    };
+
     try{
       const d=await json("/api/projects/"+id);
       const p=d.project;
@@ -136,18 +166,79 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
       if(h) h.textContent=hostOf(p.source_url);
       const desc=$(".hero-row p");
       if(desc) desc.textContent=p.source_url;
-      const box=$(".preview-box");
-      if(box){
-        if(p.status==="done"){
-          box.innerHTML='<iframe class="project-preview-frame" title="Captured website preview" src="/preview/'+id+'/"></iframe>';
-          const hero=$(".hero-row");
-          hero?.insertAdjacentHTML("beforeend",'<div class="project-actions"><a class="btn" target="_blank" rel="noopener" href="/preview/'+id+'/">Open preview ↗</a><a class="btn primary" href="/api/jobs/'+id+'/download">Download ZIP ↓</a></div>');
-        }else{
-          box.innerHTML='<div class="capture-running"><div class="capture-spinner"></div><h3>'+p.status.charAt(0).toUpperCase()+p.status.slice(1)+' capture</h3><p>WebLoom is building the project. This page updates automatically.</p></div>';
-          setTimeout(()=>location.reload(),3500);
-        }
+
+      if(!panel) return;
+      if(p.status!=="done"){
+        panel.innerHTML='<div class="capture-running"><div class="capture-spinner"></div><h3>'+esc(p.status.charAt(0).toUpperCase()+p.status.slice(1))+' capture</h3><p>WebLoom is building the project. This page updates automatically.</p></div>';
+        tabs.forEach(t=>t.classList.add("loading"));
+        setTimeout(()=>location.reload(),3500);
+        return;
       }
-    }catch(e){}
+
+      const hero=$(".hero-row");
+      if(hero && !$(".project-actions",hero)){
+        hero.insertAdjacentHTML("beforeend",'<div class="project-actions"><a class="btn" target="_blank" rel="noopener" href="'+previewBase+'">Open preview ↗</a><a class="btn primary" href="/api/jobs/'+encodeURIComponent(id)+'/download">Download ZIP ↓</a></div>');
+      }
+
+      const render=async tab=>{
+        tabs.forEach(a=>a.classList.toggle("active",a.dataset.projectTab===tab));
+        panel.innerHTML='<div class="capture-running" style="min-height:360px"><div class="capture-spinner"></div><p>Loading '+esc(tab)+'…</p></div>';
+        try{
+          if(tab==="overview"){
+            panel.innerHTML='<iframe class="project-preview-frame" title="Captured website preview" src="'+previewBase+'" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer"></iframe>';
+            return;
+          }
+          if(tab==="pages"){
+            const m=await loadJson("webloom-project.json");
+            const pages=Array.isArray(m.pages)?m.pages:[];
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Pages</h2><p>Reachable public routes saved with this capture.</p></div><span class="project-count">'+pages.length+' found</span></div><div class="data-list">'+pages.map((url,i)=>'<div class="data-row"><a target="_blank" rel="noopener" href="'+previewBase+(i===0?"":encodeURI(new URL(url).pathname.replace(/^\//,"")))+'">'+esc(url)+'</a><span>page</span></div>').join("")+'</div></div>';
+            return;
+          }
+          if(tab==="assets"){
+            const m=await loadJson("webloom-project.json");
+            const files=Array.isArray(m.files)?m.files:[];
+            const visible=files.slice(0,180);
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Files & assets</h2><p>Captured frontend files kept with their project paths.</p></div><span class="project-count">'+files.length+' files</span></div><div class="asset-grid">'+visible.map(f=>'<div class="asset-item"><span class="asset-type">'+esc(extOf(f.path))+'</span><b title="'+esc(f.path)+'">'+esc(f.path)+'</b><span>'+prettyBytes(f.bytes)+'</span></div>').join("")+'</div>'+(files.length>visible.length?'<p class="metric-sub">Showing the first '+visible.length+' files.</p>':"")+'</div>';
+            return;
+          }
+          if(tab==="metadata"){
+            const m=await loadJson("metadata.json");
+            const og=m.open_graph||{};
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Metadata</h2><p>Page metadata separated from the raw markup.</p></div></div><div class="meta-grid"><div class="meta-card"><small>Title</small><div>'+esc(m.title||"Not found")+'</div></div><div class="meta-card"><small>Description</small><div>'+esc(m.description||"Not found")+'</div></div><div class="meta-card"><small>Canonical</small><div>'+esc(m.canonical||"Not found")+'</div></div><div class="meta-card"><small>Open Graph</small><div>'+(Object.keys(og).length?Object.entries(og).map(([k,v])=>'<b>'+esc(k)+'</b>: '+esc(v)).join("<br>"):"Not found")+'</div></div></div></div>';
+            return;
+          }
+          if(tab==="links"){
+            const links=await loadJson("links.json");
+            const rows=Array.isArray(links)?links:[];
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Discovered links</h2><p>URLs referenced while WebLoom mapped the public frontend.</p></div><span class="project-count">'+rows.length+' links</span></div><div class="data-list">'+rows.slice(0,250).map(url=>'<div class="data-row"><a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(url)+'</a><span>'+esc(hostOf(url))+'</span></div>').join("")+'</div></div>';
+            return;
+          }
+          if(tab==="sitemap"){
+            const xml=await loadText("sitemap.xml");
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Sitemap</h2><p>Generated from the public routes WebLoom actually discovered.</p></div><a class="btn" href="'+previewBase+'sitemap.xml" target="_blank" rel="noopener">Open XML ↗</a></div><pre class="code-panel">'+esc(xml)+'</pre></div>';
+            return;
+          }
+          if(tab==="export"){
+            const m=await loadJson("webloom-project.json");
+            panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Export</h2><p>Take the organized project with you.</p></div></div><div class="export-box"><div><h3>WebLoom project ZIP</h3><p>'+esc(String(m.files_saved||0))+' captured files · '+prettyBytes(m.bytes_saved||0)+' · metadata, links and sitemap included.</p></div><a class="btn primary" href="/api/jobs/'+encodeURIComponent(id)+'/download">Download ZIP ↓</a></div></div>';
+            return;
+          }
+        }catch(err){
+          panel.innerHTML='<div class="project-tab-error">'+esc(err.message||"Could not load this project view.")+'</div>';
+        }
+      };
+
+      tabs.forEach(a=>a.addEventListener("click",e=>{
+        e.preventDefault();
+        const tab=a.dataset.projectTab||"overview";
+        history.replaceState(null,"","#"+tab);
+        render(tab);
+      }));
+      const initial=(location.hash||"#overview").slice(1);
+      render(tabs.some(a=>a.dataset.projectTab===initial)?initial:"overview");
+    }catch(e){
+      if(panel) panel.innerHTML='<div class="project-tab-error">'+esc(e.message||"Project could not be loaded.")+'</div>';
+    }
   }
 
   async function billingPage(){
