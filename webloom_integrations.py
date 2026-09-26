@@ -60,6 +60,36 @@ def auth_user_from_token(token):
         return None
     return r.json()
 
+def auth_refresh(refresh_token):
+    if not refresh_token:
+        return None
+    r = requests.post(
+        f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+        headers=_sb_headers(),
+        json={"refresh_token": refresh_token},
+        timeout=20,
+    )
+    if not r.ok:
+        return None
+    return r.json()
+
+def auth_recover(email, redirect_to=None):
+    if not supabase_ready():
+        raise RuntimeError("Supabase is not configured.")
+    url = f"{SUPABASE_URL}/auth/v1/recover"
+    if redirect_to:
+        url += "?redirect_to=" + requests.utils.quote(redirect_to, safe="")
+    r = requests.post(
+        url,
+        headers=_sb_headers(),
+        json={"email": email},
+        timeout=20,
+    )
+    if not r.ok:
+        data = r.json() if r.content else {}
+        raise ValueError(data.get("msg") or data.get("error_description") or "Could not send recovery email.")
+    return True
+
 def profile_for(user_id):
     r = requests.get(
         f"{SUPABASE_URL}/rest/v1/profiles",
@@ -93,6 +123,8 @@ def set_login_session(auth_data):
     session["user_id"] = user["id"]
     session["email"] = email
     session["access_token"] = token
+    if auth_data.get("refresh_token"):
+        session["refresh_token"] = auth_data["refresh_token"]
     session.permanent = True
     return profile_for(user["id"]) or {"id": user["id"], "email": email, "role": "user", "plan": "free"}
 
@@ -106,8 +138,18 @@ def current_identity():
         return None
     user = auth_user_from_token(token)
     if not user or user.get("id") != user_id:
-        session.clear()
-        return None
+        refreshed = auth_refresh(session.get("refresh_token"))
+        if not refreshed:
+            session.clear()
+            return None
+        token = refreshed.get("access_token")
+        user = refreshed.get("user") or auth_user_from_token(token)
+        if not token or not user or user.get("id") != user_id:
+            session.clear()
+            return None
+        session["access_token"] = token
+        if refreshed.get("refresh_token"):
+            session["refresh_token"] = refreshed["refresh_token"]
     profile = profile_for(user_id) or {}
     return {
         "id": user_id,
@@ -141,16 +183,25 @@ def require_owner(fn):
         return fn(*args, **kwargs)
     return wrapped
 
-def consume_capture_entitlement(user_id):
+def consume_capture_entitlement(user_id, trial_key):
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/consume_capture_entitlement",
         headers=_sb_headers(service=True),
-        json={"p_user": user_id},
+        json={"p_user": user_id, "p_trial_key": trial_key},
         timeout=20,
     )
     if not r.ok:
         raise RuntimeError("Could not verify capture entitlement.")
     return r.json()
+
+def restore_free_capture(user_id, trial_key):
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/restore_free_capture",
+        headers=_sb_headers(service=True),
+        json={"p_user": user_id, "p_trial_key": trial_key},
+        timeout=20,
+    )
+    return r.ok
 
 def create_project(user_id, project_id, source_url, engine="webloom"):
     host = urlparse(source_url).hostname or ""
