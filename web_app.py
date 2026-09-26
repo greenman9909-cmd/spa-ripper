@@ -4,6 +4,7 @@ import ipaddress
 import mimetypes
 import hashlib
 import hmac
+import json
 import os
 import shutil
 import socket
@@ -12,6 +13,8 @@ import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
+from html.parser import HTMLParser
+from xml.sax.saxutils import escape as xml_escape
 
 import requests
 from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session, redirect, make_response
@@ -167,6 +170,104 @@ class GuardedSession(requests.Session):
         return super().send(request, **kwargs)
 
 
+class _MetadataParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_title = False
+        self.title_parts = []
+        self.description = None
+        self.canonical = None
+        self.open_graph = {}
+
+    def handle_starttag(self, tag, attrs):
+        values = {str(k).lower(): v for k, v in attrs if k}
+        if tag.lower() == "title":
+            self.in_title = True
+        elif tag.lower() == "meta":
+            key = (values.get("name") or values.get("property") or "").lower()
+            content = values.get("content")
+            if key == "description" and content:
+                self.description = content
+            if key.startswith("og:") and content:
+                self.open_graph[key] = content
+        elif tag.lower() == "link":
+            rel = str(values.get("rel") or "").lower()
+            if "canonical" in rel and values.get("href"):
+                self.canonical = values["href"]
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "title":
+            self.in_title = False
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.title_parts.append(data)
+
+
+def _write_project_reports(output_dir: Path, job: dict, scraper: SpaScraper):
+    index_file = output_dir / "index.html"
+    parser = _MetadataParser()
+    try:
+        parser.feed(index_file.read_text(encoding="utf-8", errors="ignore"))
+    except Exception:
+        pass
+
+    source_url = job["url"]
+    base_host = urlparse(source_url).netloc
+    discovered = sorted(scraper.queued_set)
+    page_urls = []
+    for url in discovered:
+        parsed = urlparse(url)
+        if parsed.netloc != base_host:
+            continue
+        suffix = Path(parsed.path).suffix.lower()
+        if not suffix or suffix in {".html", ".htm"}:
+            page_urls.append(url)
+    if source_url not in page_urls:
+        page_urls.insert(0, source_url)
+
+    files = []
+    for path in output_dir.rglob("*"):
+        if path.is_file():
+            files.append({
+                "path": path.relative_to(output_dir).as_posix(),
+                "bytes": path.stat().st_size,
+            })
+
+    metadata = {
+        "title": " ".join(" ".join(parser.title_parts).split()) or None,
+        "description": parser.description,
+        "canonical": parser.canonical,
+        "open_graph": parser.open_graph,
+    }
+    manifest = {
+        "source_url": source_url,
+        "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "files_saved": scraper.processed_count,
+        "bytes_saved": scraper.total_bytes,
+        "failed_count": len(scraper.failed_urls),
+        "pages": page_urls,
+        "files": files,
+    }
+
+    (output_dir / "webloom-project.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "metadata.json").write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "links.json").write_text(
+        json.dumps(discovered, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    sitemap = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    sitemap.extend(f"  <url><loc>{xml_escape(url)}</loc></url>" for url in page_urls)
+    sitemap.append("</urlset>")
+    (output_dir / "sitemap.xml").write_text("\n".join(sitemap) + "\n", encoding="utf-8")
+
+
 class JobLog(io.TextIOBase):
     def __init__(self, job_id):
         self.job_id = job_id
@@ -228,6 +329,9 @@ def run_job(job_id):
             base_url=job["url"],
             output_dir=str(output_dir),
             timeout=20,
+            deep_assets=bool(job.get("deep_assets")),
+            max_files=job.get("max_files"),
+            max_bytes=job.get("max_bytes"),
         )
         safe_session = GuardedSession()
         safe_session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
@@ -237,7 +341,9 @@ def run_job(job_id):
             scraper.run()
 
         if not (output_dir / "index.html").exists():
-            raise RuntimeError("Clone finished without creating index.html.")
+            raise RuntimeError("Capture finished without creating index.html.")
+
+        _write_project_reports(output_dir, job, scraper)
 
         archive_base = JOB_ROOT / job_id / "webloom-project"
         archive_path = archive_base.with_suffix(".zip")
