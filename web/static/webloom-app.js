@@ -270,27 +270,65 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
   }
 
   async function billingPage(){
-    if(path!=="/billing" && path!=="/pricing") return;
+    if(path!=="/billing") return;
     const u=await hydrateUser();
-    const buttons=$$("button");
-    buttons.forEach(btn=>{
-      if(/upgrade|unlock|get pro/i.test(btn.textContent)){
-        btn.addEventListener("click",async()=>{
-          const old=btn.textContent;btn.disabled=true;btn.textContent="Opening checkout…";
-          try{const d=await apiPost("/api/billing/checkout");location.href=d.url;}
-          catch(e){btn.disabled=false;btn.textContent=old;alert(e.message);}
-        });
+    if(!u) return;
+    const upgrade=$("#upgradePro");
+    const notice=$(".notice");
+
+    if(u.role==="owner"){
+      if(upgrade){
+        upgrade.disabled=true;
+        upgrade.textContent="Owner access active";
       }
-      if(/manage billing/i.test(btn.textContent)){
-        btn.addEventListener("click",async()=>{
-          try{const d=await apiPost("/api/billing/portal");location.href=d.url;}catch(e){alert(e.message);}
-        });
-      }
-    });
-    if(u && path==="/billing"){
-      const notice=$(".notice");
-      if(notice) notice.textContent=u.role==="owner"?"Owner access is active. Billing is optional for this account.":u.plan==="pro"?"WebLoom Pro is active on this account.":"Your free capture is ready. Upgrade when you need unlimited captures.";
+      if(notice) notice.textContent="Owner access is active. This account does not need a Pro subscription.";
+      return;
     }
+
+    if(u.plan==="pro" && ["active","trialing"].includes(u.subscription_status)){
+      if(upgrade){
+        upgrade.textContent="Manage billing →";
+        upgrade.addEventListener("click",async()=>{
+          const old=upgrade.textContent;
+          upgrade.disabled=true;upgrade.textContent="Opening billing…";
+          try{
+            const d=await apiPost("/api/billing/portal");
+            location.href=d.url;
+          }catch(e){
+            upgrade.disabled=false;upgrade.textContent=old;alert(e.message);
+          }
+        });
+      }
+      if(notice) notice.textContent="WebLoom Pro is active on this account.";
+      return;
+    }
+
+    if(u.is_anonymous || !u.email){
+      if(upgrade){
+        upgrade.textContent="Create account for Pro →";
+        upgrade.addEventListener("click",()=>{location.href="/signup?next="+encodeURIComponent("/billing")});
+      }
+      if(notice) notice.textContent="Your free capture does not need an account. Create or sign in to an account only when you want Pro.";
+      return;
+    }
+
+    if(upgrade){
+      upgrade.addEventListener("click",async()=>{
+        const old=upgrade.textContent;
+        upgrade.disabled=true;upgrade.textContent="Opening checkout…";
+        try{
+          const d=await apiPost("/api/billing/checkout");
+          location.href=d.url;
+        }catch(e){
+          if(e.data?.account_required){
+            location.href="/signup?next="+encodeURIComponent("/billing");
+            return;
+          }
+          upgrade.disabled=false;upgrade.textContent=old;alert(e.message);
+        }
+      });
+    }
+    if(notice) notice.textContent="Your free capture is ready. Upgrade when you need unlimited captures.";
   }
 
   function recoveryPage(){
