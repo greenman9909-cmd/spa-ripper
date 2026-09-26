@@ -8,19 +8,23 @@ from flask import jsonify, request, session
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-OWNER_EMAIL = os.environ.get("WEBLOOM_OWNER_EMAIL", "").strip().lower()
 
 def supabase_ready():
-    return bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)
+    return bool(SUPABASE_URL and SUPABASE_ANON_KEY)
 
-def _sb_headers(service=False, token=None):
-    key = SUPABASE_SERVICE_ROLE_KEY if service else SUPABASE_ANON_KEY
-    headers = {"apikey": key, "Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    elif service:
-        headers["Authorization"] = f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+def _sb_headers(token=None):
+    headers = {"apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json"}
+    headers["Authorization"] = f"Bearer {token or SUPABASE_ANON_KEY}"
     return headers
+
+def _service_headers():
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
 
 def auth_signup(email, password):
     if not supabase_ready():
@@ -53,7 +57,7 @@ def auth_signin(email, password):
 def auth_user_from_token(token):
     r = requests.get(
         f"{SUPABASE_URL}/auth/v1/user",
-        headers=_sb_headers(token=token),
+        headers=_sb_headers(token),
         timeout=20,
     )
     if not r.ok:
@@ -90,10 +94,13 @@ def auth_recover(email, redirect_to=None):
         raise ValueError(data.get("msg") or data.get("error_description") or "Could not send recovery email.")
     return True
 
-def profile_for(user_id):
+def profile_for(user_id, token=None):
+    token = token or session.get("access_token")
+    if not token:
+        return None
     r = requests.get(
         f"{SUPABASE_URL}/rest/v1/profiles",
-        headers={**_sb_headers(service=True), "Accept": "application/vnd.pgrst.object+json"},
+        headers={**_sb_headers(token), "Accept": "application/vnd.pgrst.object+json"},
         params={"id": f"eq.{user_id}", "select": "*"},
         timeout=20,
     )
@@ -101,24 +108,12 @@ def profile_for(user_id):
         return None
     return r.json()
 
-def set_owner_if_matching(user_id, email):
-    if not OWNER_EMAIL or (email or "").strip().lower() != OWNER_EMAIL:
-        return
-    requests.patch(
-        f"{SUPABASE_URL}/rest/v1/profiles",
-        headers={**_sb_headers(service=True), "Prefer": "return=minimal"},
-        params={"id": f"eq.{user_id}"},
-        json={"role": "owner", "plan": "pro", "subscription_status": "active"},
-        timeout=20,
-    )
-
 def set_login_session(auth_data):
     user = auth_data.get("user") or {}
     token = auth_data.get("access_token")
     if not user.get("id") or not token:
         raise ValueError("Authentication did not return a user session.")
     email = (user.get("email") or "").lower()
-    set_owner_if_matching(user["id"], email)
     session.clear()
     session["user_id"] = user["id"]
     session["email"] = email
@@ -126,7 +121,7 @@ def set_login_session(auth_data):
     if auth_data.get("refresh_token"):
         session["refresh_token"] = auth_data["refresh_token"]
     session.permanent = True
-    return profile_for(user["id"]) or {"id": user["id"], "email": email, "role": "user", "plan": "free"}
+    return profile_for(user["id"], token) or {"id": user["id"], "email": email, "role": "user", "plan": "free"}
 
 def clear_login_session():
     session.clear()
@@ -150,7 +145,7 @@ def current_identity():
         session["access_token"] = token
         if refreshed.get("refresh_token"):
             session["refresh_token"] = refreshed["refresh_token"]
-    profile = profile_for(user_id) or {}
+    profile = profile_for(user_id, token) or {}
     return {
         "id": user_id,
         "email": user.get("email") or session.get("email"),
@@ -185,31 +180,34 @@ def require_owner(fn):
         return fn(*args, **kwargs)
     return wrapped
 
-def consume_capture_entitlement(user_id, trial_key, network_key=None):
+def consume_capture_entitlement(user_id, trial_key, network_key=None, token=None):
+    token = token or session.get("access_token")
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/consume_capture_entitlement",
-        headers=_sb_headers(service=True),
-        json={"p_user": user_id, "p_trial_key": trial_key, "p_network_key": network_key},
+        headers=_sb_headers(token),
+        json={"p_trial_key": trial_key, "p_network_key": network_key},
         timeout=20,
     )
     if not r.ok:
         raise RuntimeError("Could not verify capture entitlement.")
     return r.json()
 
-def restore_free_capture(user_id, trial_key):
+def restore_free_capture(user_id, trial_key, token=None):
+    token = token or session.get("access_token")
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/restore_free_capture",
-        headers=_sb_headers(service=True),
-        json={"p_user": user_id, "p_trial_key": trial_key},
+        headers=_sb_headers(token),
+        json={"p_trial_key": trial_key},
         timeout=20,
     )
     return r.ok
 
-def create_project(user_id, project_id, source_url, engine="webloom"):
+def create_project(user_id, project_id, source_url, engine="webloom", token=None):
+    token = token or session.get("access_token")
     host = urlparse(source_url).hostname or ""
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/projects",
-        headers={**_sb_headers(service=True), "Prefer": "return=representation"},
+        headers={**_sb_headers(token), "Prefer": "return=representation"},
         json={
             "id": project_id,
             "user_id": user_id,
@@ -225,20 +223,22 @@ def create_project(user_id, project_id, source_url, engine="webloom"):
     rows = r.json()
     return rows[0] if isinstance(rows, list) and rows else rows
 
-def update_project(project_id, **fields):
+def update_project(project_id, token=None, **fields):
+    token = token or session.get("access_token")
     r = requests.patch(
         f"{SUPABASE_URL}/rest/v1/projects",
-        headers={**_sb_headers(service=True), "Prefer": "return=minimal"},
+        headers={**_sb_headers(token), "Prefer": "return=minimal"},
         params={"id": f"eq.{project_id}"},
         json=fields,
         timeout=20,
     )
     return r.ok
 
-def list_projects(user_id, limit=50):
+def list_projects(user_id, limit=50, token=None):
+    token = token or session.get("access_token")
     r = requests.get(
         f"{SUPABASE_URL}/rest/v1/projects",
-        headers=_sb_headers(service=True),
+        headers=_sb_headers(token),
         params={
             "user_id": f"eq.{user_id}",
             "select": "*",
@@ -249,23 +249,25 @@ def list_projects(user_id, limit=50):
     )
     return r.json() if r.ok else []
 
-def get_project(user_id, project_id):
+def get_project(user_id, project_id, token=None):
+    token = token or session.get("access_token")
     r = requests.get(
         f"{SUPABASE_URL}/rest/v1/projects",
-        headers={**_sb_headers(service=True), "Accept": "application/vnd.pgrst.object+json"},
+        headers={**_sb_headers(token), "Accept": "application/vnd.pgrst.object+json"},
         params={"user_id": f"eq.{user_id}", "id": f"eq.{project_id}", "select": "*"},
         timeout=20,
     )
     return r.json() if r.ok else None
 
-def update_user_profile(user_id, fields):
+def update_user_profile(user_id, fields, token=None):
+    token = token or session.get("access_token")
     allowed = {"display_name", "settings"}
     payload = {k: v for k, v in (fields or {}).items() if k in allowed}
     if not payload:
-        return profile_for(user_id)
+        return profile_for(user_id, token)
     r = requests.patch(
         f"{SUPABASE_URL}/rest/v1/profiles",
-        headers={**_sb_headers(service=True), "Prefer": "return=representation"},
+        headers={**_sb_headers(token), "Prefer": "return=representation"},
         params={"id": f"eq.{user_id}"},
         json=payload,
         timeout=20,
@@ -276,9 +278,12 @@ def update_user_profile(user_id, fields):
     return rows[0] if isinstance(rows, list) and rows else rows
 
 def set_subscription_state(user_id, customer_id, subscription_id, status):
+    headers = _service_headers()
+    if not headers:
+        return False
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/set_subscription_state",
-        headers=_sb_headers(service=True),
+        headers=headers,
         json={
             "p_user": user_id,
             "p_customer": customer_id,
@@ -292,14 +297,15 @@ def set_subscription_state(user_id, customer_id, subscription_id, status):
 
 STORAGE_BUCKET = os.environ.get("WEBLOOM_STORAGE_BUCKET", "webloom-projects")
 
-def storage_upload_bytes(object_path, data, content_type="application/octet-stream"):
+def storage_upload_bytes(object_path, data, content_type="application/octet-stream", token=None):
     if not supabase_ready():
         raise RuntimeError("Supabase is not configured.")
+    token = token or session.get("access_token")
     clean = object_path.lstrip("/")
     r = requests.post(
         f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{clean}",
         headers={
-            **_sb_headers(service=True),
+            **_sb_headers(token),
             "Content-Type": content_type,
             "x-upsert": "true",
         },
@@ -310,29 +316,31 @@ def storage_upload_bytes(object_path, data, content_type="application/octet-stre
         raise RuntimeError(f"Storage upload failed for {clean}: {r.text[:200]}")
     return clean
 
-def storage_upload_file(object_path, file_path, content_type="application/octet-stream"):
+def storage_upload_file(object_path, file_path, content_type="application/octet-stream", token=None):
     with open(file_path, "rb") as fh:
-        return storage_upload_bytes(object_path, fh.read(), content_type)
+        return storage_upload_bytes(object_path, fh.read(), content_type, token=token)
 
-def storage_download(object_path):
+def storage_download(object_path, token=None):
     if not supabase_ready():
         raise RuntimeError("Supabase is not configured.")
+    token = token or session.get("access_token")
     clean = object_path.lstrip("/")
     r = requests.get(
         f"{SUPABASE_URL}/storage/v1/object/authenticated/{STORAGE_BUCKET}/{clean}",
-        headers=_sb_headers(service=True),
+        headers=_sb_headers(token),
         timeout=60,
     )
     if not r.ok:
         return None
     return r.content, r.headers.get("content-type") or "application/octet-stream"
 
-def storage_delete_prefix(paths):
+def storage_delete_prefix(paths, token=None):
     if not paths:
         return True
+    token = token or session.get("access_token")
     r = requests.delete(
         f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}",
-        headers=_sb_headers(service=True),
+        headers=_sb_headers(token),
         json={"prefixes": [p.lstrip("/") for p in paths]},
         timeout=60,
     )
