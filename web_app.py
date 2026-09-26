@@ -175,16 +175,54 @@ def home():
 
 
 @app.get("/signin")
+def signin_page():
+    return render_template("signin.html")
+
+
+@app.get("/signup")
+def signup_page():
+    return render_template("signup.html")
+
+
 @app.get("/dashboard")
+def dashboard_page():
+    return render_template("dashboard.html")
+
+
 @app.get("/new")
-@app.get("/history")
-@app.get("/billing")
-@app.get("/settings")
-@app.get("/privacy")
-@app.get("/terms")
+def new_capture_page():
+    return render_template("new.html")
+
+
+@app.get("/project")
 @app.get("/project/<project_id>")
-def product_app(project_id=None):
-    return render_template("app.html")
+def project_page(project_id=None):
+    return render_template("project.html")
+
+
+@app.get("/billing")
+def billing_page():
+    return render_template("billing.html")
+
+
+@app.get("/account")
+def account_page():
+    return render_template("account.html")
+
+
+@app.get("/settings")
+def settings_page():
+    return render_template("settings.html")
+
+
+@app.get("/privacy")
+def privacy_page():
+    return render_template("privacy.html")
+
+
+@app.get("/terms")
+def terms_page():
+    return render_template("terms.html")
 
 
 @app.get("/api/health")
