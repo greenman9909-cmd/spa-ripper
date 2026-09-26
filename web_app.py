@@ -487,12 +487,16 @@ def owner_claim_page():
     ident = current_identity()
     if not ident:
         return redirect("/signin?next=/owner-claim")
+    if ident.get("is_anonymous") or not ident.get("email"):
+        return redirect("/signup?next=/owner-claim")
     return render_template("owner_claim.html")
 
 
 @app.post("/api/owner/claim")
 @require_user
 def api_owner_claim():
+    if request.webloom_user.get("is_anonymous") or not request.webloom_user.get("email"):
+        return jsonify({"ok": False, "error": "Use a permanent signed-in account to claim owner access."}), 409
     payload = request.get_json(silent=True) or {}
     code = (payload.get("code") or "").strip()
     if not code:
