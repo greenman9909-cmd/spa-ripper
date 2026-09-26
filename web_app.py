@@ -478,6 +478,30 @@ def admin_page():
     return render_template("admin.html")
 
 
+@app.get("/owner-claim")
+def owner_claim_page():
+    ident = current_identity()
+    if not ident:
+        return redirect("/signin?next=/owner-claim")
+    return render_template("owner_claim.html")
+
+
+@app.post("/api/owner/claim")
+@require_user
+def api_owner_claim():
+    payload = request.get_json(silent=True) or {}
+    code = (payload.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "Enter the owner claim code."}), 400
+    try:
+        result = claim_owner(code, token=session.get("access_token"))
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Owner claim was rejected."}), 403
+    return jsonify({"ok": True, "redirect": "/admin"})
+
+
 @app.get("/privacy")
 def privacy_page():
     return render_template("privacy.html")
