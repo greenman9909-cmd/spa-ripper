@@ -4,8 +4,8 @@ from functools import wraps
 import requests
 from flask import jsonify, request, session, has_request_context
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lmpyaxhviskivbdigyqo.supabase.co").rstrip("/")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_ZsDJAyJ2THaIKi_OhCXHYw__sQfGdxp")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 STORAGE_BUCKET = os.environ.get("WEBLOOM_STORAGE_BUCKET", "webloom-projects")
 
@@ -167,7 +167,7 @@ def current_identity(refresh=True):
 
     user = auth_user_from_token(token)
     if (not user or user.get("id") != user_id) and refresh:
-        refreshed = auth_refresh(session.get("refresh_token"))
+        refreshed = auth_refresh(refresh_token)
         if refreshed:
             token = refreshed.get("access_token")
             user = refreshed.get("user") or auth_user_from_token(token)
@@ -377,7 +377,7 @@ def restore_failed_free_capture(project_id, token=None):
 
 
 def claim_owner(code, token=None):
-    token = token or session.get("access_token")
+    token = token or request.cookies.get("wl_access") or session.get("access_token")
     if not token:
         raise RuntimeError("Authentication required.")
     r = requests.post(
