@@ -20,4 +20,6 @@ jobs:
       - name: Compile Python
         run: python -m py_compile web_app.py webloom_integrations.py spa_ripper/*.py
       - name: Run tests
+        env:
+          PYTHONPATH: .
         run: pytest -q
