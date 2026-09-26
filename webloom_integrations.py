@@ -361,3 +361,16 @@ def storage_download(object_path, token=None):
     if not r.ok:
         return None
     return r.content, r.headers.get("content-type") or "application/octet-stream"
+
+
+def restore_failed_free_capture(project_id, token=None):
+    token = token or _session_token()
+    if not token:
+        return False
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/restore_failed_free_capture",
+        headers=_sb_headers(token),
+        json={"p_project_id": project_id},
+        timeout=20,
+    )
+    return r.ok and bool(r.json())
