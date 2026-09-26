@@ -229,6 +229,31 @@ options:
 MIT License
 
 
+## WebLoom launch checklist
+
+The browser product in `web_app.py` is WebLoom. The current build includes:
+
+- account-free first capture through an anonymous Supabase session
+- server-side one-free-capture enforcement
+- persistent project records and private object storage
+- live project preview, Pages, Files, Metadata, Links, Sitemap and ZIP export views
+- Stripe Checkout / Customer Portal endpoints and webhook-driven Pro entitlements
+- owner-only private audit bridge
+- SSRF protection for capture targets
+- responsive dashboard, project, billing, account and settings pages
+
+For deployment, copy the variables from `.env.example` into the hosting
+provider's server-side environment settings. Never expose
+`SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, or any owner/private-service token to browser code.
+
+The free workflow does not require a visible account. Pro billing requires a
+permanent signed-in account.
+
+The repository's `vercel.json` routes all requests through the Flask app and
+uses durable Supabase storage for completed project files. Keep
+`SPA_RIPPER_ALLOW_PRIVATE=0` on every public deployment.
+
 ## Higgsfield Seedance 2.5 API
 
 WebLoom includes a minimal Python SDK smoke test in `main.py` using the official
