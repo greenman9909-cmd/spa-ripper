@@ -137,3 +137,9 @@ $$;
 
 revoke all on function public.set_subscription_state(uuid,text,text,text) from public;
 grant execute on function public.set_subscription_state(uuid,text,text,text) to service_role;
+
+
+-- Private object storage for captured files and ZIP exports.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('webloom-projects', 'webloom-projects', false, 104857600)
+on conflict (id) do update set public = false;
