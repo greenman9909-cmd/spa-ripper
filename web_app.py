@@ -66,7 +66,7 @@ app.config.update(
 )
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_PRO_PRICE_ID = os.environ.get("STRIPE_PRO_PRICE_ID", "")
+STRIPE_PRO_PRICE_ID = os.environ.get("STRIPE_PRO_PRICE_ID", "price_1UJzCYF0EUJm1EWSK5S9pcvU")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PUBLIC_APP_URL = os.environ.get("WEBLOOM_PUBLIC_URL", "").rstrip("/")
 SPA_REKT_INTERNAL_URL = os.environ.get("SPA_REKT_INTERNAL_URL", "").rstrip("/")
