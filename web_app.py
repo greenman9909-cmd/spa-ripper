@@ -25,6 +25,7 @@ from webloom_integrations import (
     auth_signup,
     auth_signin,
     set_login_session,
+    apply_auth_cookies,
     clear_login_session,
     current_identity,
     require_user,
@@ -40,6 +41,8 @@ from webloom_integrations import (
     storage_download,
     restore_failed_free_capture,
     auth_recover,
+    update_user_profile,
+    claim_owner,
 )
 
 
