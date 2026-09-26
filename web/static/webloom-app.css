@@ -66,3 +66,52 @@
   .project-preview-frame{min-height:420px}
   .project-actions{width:100%}.project-actions .btn{flex:1}
 }
+
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:wl-page-out .16s ease both}
+::view-transition-new(root){animation:wl-page-in .28s cubic-bezier(.2,.75,.25,1) both}
+@keyframes wl-page-out{to{opacity:.75;transform:translateY(-3px)}}
+@keyframes wl-page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.main{position:relative;overflow:hidden}
+.main:before{content:"";position:fixed;z-index:-1;width:420px;height:420px;border-radius:50%;right:-210px;top:12vh;background:radial-gradient(circle,rgba(89,91,255,.07),rgba(255,255,255,0) 68%);pointer-events:none;transform:translate3d(0,var(--app-orb-y,0),0);will-change:transform}
+.topbar{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:rgba(255,255,255,.88)}
+.card,.capture-box,.preview-box{transition:transform .28s cubic-bezier(.2,.75,.25,1),box-shadow .28s ease,border-color .28s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 18px 45px rgba(42,65,120,.08)}
+.project-row{transition:transform .18s ease,background .18s ease,border-color .18s ease}
+.project-row:hover{transform:translateX(2px)}
+.btn svg,.side-nav svg,.metric-icon svg{stroke-linecap:round;stroke-linejoin:round}
+.side-nav a:before{content:"";position:absolute;left:0;width:3px;height:18px;border-radius:0 3px 3px 0;background:linear-gradient(180deg,#4c6cff,#7350ff);transform:scaleY(0);transition:transform .2s ease}
+.side-nav a{position:relative}
+.side-nav a.active:before{transform:scaleY(1)}
+.avatar{transition:transform .2s ease,box-shadow .2s ease}
+.avatar:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(52,72,130,.14)}
+.content>.reveal.show:nth-child(2){transition-delay:.05s}
+.content>.reveal.show:nth-child(3){transition-delay:.1s}
+
+.capture-progress{margin-top:18px;padding:14px;border:1px solid #e1e7f2;border-radius:16px;background:linear-gradient(180deg,#fff,#fafbff);box-shadow:0 10px 28px rgba(51,72,128,.05)}
+.capture-progress[hidden]{display:none}
+.capture-progress-bar{height:5px;border-radius:999px;background:#edf1f8;overflow:hidden}
+.capture-progress-bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#406cff,#704dff);transition:width .65s cubic-bezier(.2,.75,.25,1)}
+.capture-progress-copy{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:10px}
+.capture-progress-copy b{font-size:12px}
+.capture-progress-copy span{font-size:10px;color:#7c899f;text-align:right}
+
+.auth-visual{position:relative;overflow:hidden}
+.auth-visual:after{content:"";position:absolute;inset:auto -12% -20% auto;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(102,91,255,.2),rgba(12,23,50,0) 68%);animation:authGlow 9s ease-in-out infinite alternate;pointer-events:none}
+.auth-quote{position:relative;z-index:1;animation:authCopyIn .6s cubic-bezier(.2,.75,.25,1) both}
+.auth-form{animation:authFormIn .55s .08s cubic-bezier(.2,.75,.25,1) both}
+@keyframes authGlow{from{transform:translate3d(-24px,18px,0) scale(.95)}to{transform:translate3d(20px,-14px,0) scale(1.08)}}
+@keyframes authCopyIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes authFormIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-old(root),::view-transition-new(root),.auth-visual:after,.auth-quote,.auth-form{animation:none!important}
+  .card,.project-row,.avatar{transition:none!important}
+  .main:before{transform:none!important}
+}
+@media(max-width:760px){
+  .capture-progress-copy{align-items:flex-start;flex-direction:column;gap:4px}
+  .capture-progress-copy span{text-align:left}
+  .card:hover{transform:none}
+}
