@@ -79,6 +79,9 @@ class SpaScraper:
         user_agent: str = DEFAULT_USER_AGENT,
         extra_endpoints: Optional[List[str]] = None,
         timeout: int = 15,
+        deep_assets: bool = True,
+        max_files: Optional[int] = None,
+        max_bytes: Optional[int] = None,
     ):
         self.base_url = base_url if base_url.endswith("/") else base_url + "/"
         parsed_base = urlparse(self.base_url)
@@ -86,6 +89,9 @@ class SpaScraper:
         self.output_dir = output_dir
         self.timeout = timeout
         self.extra_endpoints = extra_endpoints or COMMON_EXTRA_ENDPOINTS
+        self.deep_assets = deep_assets
+        self.max_files = max_files
+        self.max_bytes = max_bytes
 
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent})
@@ -211,6 +217,13 @@ class SpaScraper:
         # 3. Process the recursive download queue
         queue_idx = 0
         while queue_idx < len(self.queue):
+            if self.max_files and self.processed_count >= self.max_files:
+                print(f"[!] Capture file limit reached ({self.max_files}).")
+                break
+            if self.max_bytes and self.total_bytes >= self.max_bytes:
+                print(f"[!] Capture size limit reached ({self.max_bytes:,} bytes).")
+                break
+
             current_url = self.queue[queue_idx]
             queue_idx += 1
 
@@ -225,6 +238,10 @@ class SpaScraper:
                     continue
 
                 content = res.content
+                if self.max_bytes and self.total_bytes + len(content) > self.max_bytes:
+                    print(f"[-] [LIMIT] {current_url} would exceed capture size limit")
+                    self.failed_urls.append((current_url, "Capture size limit"))
+                    break
                 with open(local_path, "wb") as f:
                     f.write(content)
 
@@ -243,7 +260,7 @@ class SpaScraper:
                         self.enqueue(css_asset, current_url)
 
                 # Deep scan JS bundles for dynamically imported chunks and assets
-                elif local_path.lower().endswith(".js") or "javascript" in content_type:
+                elif (local_path.lower().endswith(".js") or "javascript" in content_type) and self.deep_assets:
                     js_text = content.decode("utf-8", errors="ignore")
                     for js_asset in self.extract_js_assets(js_text):
                         # Preserve relative imports by resolving against the current bundle.
