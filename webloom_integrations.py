@@ -2,7 +2,7 @@ import os
 from functools import wraps
 
 import requests
-from flask import jsonify, request, session, has_request_context
+from flask import jsonify, request, session, has_request_context, make_response
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://lmpyaxhviskivbdigyqo.supabase.co").rstrip("/")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_ZsDJAyJ2THaIKi_OhCXHYw__sQfGdxp")
@@ -196,31 +196,43 @@ def profile_for(user_id, token=None):
 def current_identity(refresh=True):
     if not has_request_context():
         return None
-    user_id = session.get("user_id")
-    token = session.get("access_token")
-    if not user_id or not token:
+
+    token = request.cookies.get("wl_access") or session.get("access_token")
+    refresh_token = request.cookies.get("wl_refresh") or session.get("refresh_token")
+    if not token:
         return None
 
     user = auth_user_from_token(token)
-    refresh_token = session.get("refresh_token")
-    if (not user or user.get("id") != user_id) and refresh:
+    if not user and refresh and refresh_token:
         refreshed = auth_refresh(refresh_token)
         if refreshed:
             token = refreshed.get("access_token")
             user = refreshed.get("user") or auth_user_from_token(token)
-            if token and user and user.get("id") == user_id:
+            if token and user:
                 session["access_token"] = token
-                if refreshed.get("refresh_token"):
-                    session["refresh_token"] = refreshed["refresh_token"]
+                session["refresh_token"] = refreshed.get("refresh_token") or refresh_token
+                session["user_id"] = user.get("id")
+                session["email"] = (user.get("email") or "").lower()
+                request.webloom_refreshed_auth = {
+                    "access_token": token,
+                    "refresh_token": refreshed.get("refresh_token") or refresh_token,
+                }
 
-    if not user or user.get("id") != user_id:
+    if not user or not user.get("id"):
         session.clear()
         return None
+
+    user_id = user["id"]
+    session["user_id"] = user_id
+    session["email"] = (user.get("email") or "").lower()
+    session["access_token"] = token
+    if refresh_token:
+        session["refresh_token"] = refresh_token
 
     profile = profile_for(user_id, token) or {}
     return {
         "id": user_id,
-        "email": user.get("email") or session.get("email") or "",
+        "email": user.get("email") or "",
         "is_anonymous": bool(user.get("is_anonymous") or profile.get("is_anonymous")),
         "role": profile.get("role", "user"),
         "plan": profile.get("plan", "free"),
@@ -237,8 +249,9 @@ def ensure_identity():
     if ident:
         return ident
     auth_data = auth_anonymous()
-    set_login_session(auth_data)
-    return current_identity()
+    auth_state = set_login_session(auth_data)
+    request.webloom_new_auth = auth_state
+    return auth_state.get("profile") or current_identity(refresh=False)
 
 
 def require_user(fn):
@@ -260,7 +273,12 @@ def require_identity(fn):
         except RuntimeError as exc:
             return jsonify({"ok": False, "error": str(exc)}), 503
         request.webloom_user = ident
-        return fn(*args, **kwargs)
+        result = fn(*args, **kwargs)
+        auth_state = getattr(request, "webloom_new_auth", None)
+        if auth_state:
+            response = make_response(result)
+            return apply_auth_cookies(response, auth_state)
+        return result
     return wrapped
 
 
