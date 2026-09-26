@@ -115,3 +115,9 @@
   .capture-progress-copy span{text-align:left}
   .card:hover{transform:none}
 }
+
+.form-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.form-status{min-height:18px;margin:10px 0 0;font-size:11px;color:#758198}
+.form-status.ok{color:#16845b}
+.form-status.error{color:#bf3d51}
+.field input:disabled{background:#f7f9fc;color:#7d889c;cursor:not-allowed}
