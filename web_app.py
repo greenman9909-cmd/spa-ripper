@@ -494,7 +494,7 @@ def api_owner_claim():
     if not code:
         return jsonify({"ok": False, "error": "Enter the owner claim code."}), 400
     try:
-        result = claim_owner(code, token=session.get("access_token"))
+        result = claim_owner(code, token=request.cookies.get("wl_access") or session.get("access_token"))
     except RuntimeError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     if not result.get("ok"):
@@ -532,8 +532,9 @@ def api_signup():
     try:
         data = auth_signup(email, password)
         if data.get("access_token"):
-            profile = set_login_session(data)
-            return jsonify({"ok": True, "profile": profile, "redirect": "/dashboard"})
+            auth_state = set_login_session(data)
+            response = jsonify({"ok": True, "profile": auth_state["profile"], "redirect": "/dashboard"})
+            return apply_auth_cookies(response, auth_state)
         return jsonify({"ok": True, "confirmation_required": True})
     except (ValueError, RuntimeError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
@@ -543,8 +544,9 @@ def api_signup():
 def api_signin():
     payload = request.get_json(silent=True) or {}
     try:
-        profile = set_login_session(auth_signin(payload.get("email",""), payload.get("password","")))
-        return jsonify({"ok": True, "profile": profile, "redirect": "/dashboard"})
+        auth_state = set_login_session(auth_signin(payload.get("email",""), payload.get("password","")))
+        response = jsonify({"ok": True, "profile": auth_state["profile"], "redirect": "/dashboard"})
+        return apply_auth_cookies(response, auth_state)
     except (ValueError, RuntimeError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 401
 
@@ -565,8 +567,8 @@ def api_recover():
 
 @app.post("/api/auth/signout")
 def api_signout():
-    clear_login_session()
-    return jsonify({"ok": True})
+    response = jsonify({"ok": True})
+    return clear_login_session(response)
 
 
 @app.get("/api/me")
@@ -817,7 +819,7 @@ def clone():
         "deep_assets": deep_assets,
         "max_files": max_files,
         "max_bytes": max_bytes,
-        "auth_token": session.get("access_token"),
+        "auth_token": request.cookies.get("wl_access") or session.get("access_token"),
     }
 
     with _jobs_lock:
