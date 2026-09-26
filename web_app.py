@@ -1,6 +1,7 @@
 import contextlib
 import io
 import ipaddress
+import mimetypes
 import os
 import shutil
 import socket
@@ -30,6 +31,8 @@ from webloom_integrations import (
     get_project,
     set_subscription_state,
     supabase_ready,
+    storage_upload_file,
+    storage_download,
 )
 
 
@@ -183,6 +186,25 @@ def run_job(job_id):
         if not (output_dir / "index.html").exists():
             raise RuntimeError("Clone finished without creating index.html.")
 
+        archive_base = JOB_ROOT / job_id / "webloom-project"
+        archive_path = archive_base.with_suffix(".zip")
+        shutil.make_archive(str(archive_base), "zip", root_dir=str(output_dir))
+
+        if supabase_ready():
+            owner_id = job.get("user_id")
+            storage_prefix = f"projects/{owner_id}/{job_id}"
+            for file_path in output_dir.rglob("*"):
+                if not file_path.is_file():
+                    continue
+                rel = file_path.relative_to(output_dir).as_posix()
+                mime = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+                storage_upload_file(f"{storage_prefix}/frontend/{rel}", file_path, mime)
+            storage_upload_file(
+                f"{storage_prefix}/webloom-project.zip",
+                archive_path,
+                "application/zip",
+            )
+
         with _jobs_lock:
             job = _jobs[job_id]
             job["status"] = "done"
@@ -190,6 +212,7 @@ def run_job(job_id):
             job["bytes"] = scraper.total_bytes
             job["failed"] = len(scraper.failed_urls)
             job["finished_at"] = time.time()
+
         if supabase_ready():
             update_project(
                 job_id,
@@ -198,7 +221,8 @@ def run_job(job_id):
                 byte_count=scraper.total_bytes,
                 failed_count=len(scraper.failed_urls),
                 preview_path=f"/preview/{job_id}/",
-                archive_path=f"/api/jobs/{job_id}/download",
+                archive_path=f"projects/{job.get('user_id')}/{job_id}/webloom-project.zip",
+                metadata={"storage_prefix": f"projects/{job.get('user_id')}/{job_id}"},
                 finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             )
 
@@ -530,16 +554,33 @@ def job_status(job_id):
 @app.get("/api/jobs/<job_id>/download")
 @require_user
 def job_download(job_id):
+    user_id = request.webloom_user["id"]
+    project = get_project(user_id, job_id) if supabase_ready() else None
+
     with _jobs_lock:
         job = _jobs.get(job_id)
-        if not job or job.get("user_id") != request.webloom_user["id"] or job["status"] != "done":
-            abort(404)
+
+    if project and project.get("status") == "done":
+        stored_path = project.get("archive_path") or f"projects/{user_id}/{job_id}/webloom-project.zip"
+        stored = storage_download(stored_path)
+        if stored:
+            data, _ = stored
+            host = urlparse(project.get("source_url") or "").hostname or "frontend"
+            safe_host = "".join(ch if ch.isalnum() or ch in ".-_" else "_" for ch in host)
+            return send_file(
+                io.BytesIO(data),
+                as_attachment=True,
+                download_name=f"{safe_host}-webloom.zip",
+                mimetype="application/zip",
+            )
+
+    if not job or job.get("user_id") != user_id or job.get("status") != "done":
+        abort(404)
 
     base = JOB_ROOT / job_id
     frontend = base / "frontend"
-    archive_base = base / "spa-ripper-clone"
+    archive_base = base / "webloom-project"
     archive_path = archive_base.with_suffix(".zip")
-
     if not archive_path.exists():
         shutil.make_archive(str(archive_base), "zip", root_dir=str(frontend))
 
@@ -548,20 +589,28 @@ def job_download(job_id):
     return send_file(
         archive_path,
         as_attachment=True,
-        download_name=f"{safe_host}-frontend.zip",
+        download_name=f"{safe_host}-webloom.zip",
         mimetype="application/zip",
     )
 
 
 def _serve_preview_file(job_id, asset_path, remember=False):
+    ident = current_identity()
+    if not ident:
+        abort(401)
+
+    project = get_project(ident["id"], job_id) if supabase_ready() else None
     with _jobs_lock:
         job = _jobs.get(job_id)
-        if not job or job["status"] != "done":
-            abort(404)
 
-    root = (JOB_ROOT / job_id / "frontend").resolve()
-    query = request.query_string.decode("utf-8", errors="ignore")
+    if project:
+        if project.get("status") != "done":
+            abort(404)
+    elif not job or job.get("user_id") != ident["id"] or job.get("status") != "done":
+        abort(404)
+
     request_rel = asset_path or "index.html"
+    query = request.query_string.decode("utf-8", errors="ignore")
 
     def finish(response):
         if remember:
@@ -571,21 +620,39 @@ def _serve_preview_file(job_id, asset_path, remember=False):
                 max_age=3600,
                 httponly=True,
                 samesite="Lax",
+                secure=app.config.get("SESSION_COOKIE_SECURE", True),
             )
         return response
 
+    candidates = []
     if query:
-        query_rel = query_variant_relpath("/" + request_rel + "?" + query)
-        query_file = (root / query_rel).resolve()
-        if (query_file == root or root in query_file.parents) and query_file.is_file():
-            return finish(send_from_directory(root, query_rel))
+        candidates.append(query_variant_relpath("/" + request_rel + "?" + query))
+    candidates.append(request_rel)
 
-    target = (root / request_rel).resolve()
-    if target != root and root not in target.parents:
+    if project and supabase_ready():
+        prefix = (project.get("metadata") or {}).get("storage_prefix") or f"projects/{ident['id']}/{job_id}"
+        for rel in candidates:
+            if rel.startswith("../") or "/../" in rel:
+                abort(404)
+            stored = storage_download(f"{prefix}/frontend/{rel}")
+            if stored:
+                data, content_type = stored
+                response = app.response_class(data, mimetype=content_type)
+                return finish(response)
+        if "." not in Path(request_rel).name:
+            stored = storage_download(f"{prefix}/frontend/index.html")
+            if stored:
+                data, content_type = stored
+                return finish(app.response_class(data, mimetype=content_type))
         abort(404)
 
-    if target.is_file():
-        return finish(send_from_directory(root, request_rel))
+    root = (JOB_ROOT / job_id / "frontend").resolve()
+    for rel in candidates:
+        target = (root / rel).resolve()
+        if target != root and root not in target.parents:
+            abort(404)
+        if target.is_file():
+            return finish(send_from_directory(root, rel))
 
     if "." not in Path(request_rel).name:
         return finish(send_from_directory(root, "index.html"))
