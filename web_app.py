@@ -693,7 +693,9 @@ def api_admin_rekt():
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     host = (urlparse(target).hostname or "").lower()
-    if SPA_REKT_ALLOWED_HOSTS and host not in SPA_REKT_ALLOWED_HOSTS:
+    if not SPA_REKT_ALLOWED_HOSTS:
+        return jsonify({"ok": False, "error": "The private audit allowlist is not configured."}), 503
+    if host not in SPA_REKT_ALLOWED_HOSTS:
         return jsonify({"ok": False, "error": "That host is not on the owner audit allowlist."}), 403
     r = requests.post(
         f"{SPA_REKT_INTERNAL_URL}/scan",
@@ -704,8 +706,10 @@ def api_admin_rekt():
     try:
         body = r.json()
     except Exception:
-        body = {"output": r.text[:10000]}
-    return jsonify({"ok": r.ok, "result": body}), r.status_code
+        body = {"error": r.text[:1000] or "Private audit service returned an invalid response."}
+    if not r.ok:
+        return jsonify({"ok": False, "error": body.get("error") or "Private audit failed."}), r.status_code
+    return jsonify({"ok": True, "result": body.get("result", body)}), 200
 
 
 @app.post("/api/clone")
