@@ -18,10 +18,16 @@ const mime = {
 };
 
 function safePath(urlPath) {
-  const clean = decodeURIComponent((urlPath || "/").split("?")[0]);
+  let clean;
+  try {
+    clean = decodeURIComponent((urlPath || "/").split("?")[0]);
+  } catch {
+    return null;
+  }
+
   const requested = clean === "/" ? "/index.html" : clean;
   const target = path.resolve(root, "." + requested);
-  return target.startsWith(root) ? target : null;
+  return target === root || target.startsWith(root + path.sep) ? target : null;
 }
 
 http.createServer((req, res) => {
