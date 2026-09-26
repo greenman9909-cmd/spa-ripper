@@ -374,3 +374,18 @@ def restore_failed_free_capture(project_id, token=None):
         timeout=20,
     )
     return r.ok and bool(r.json())
+
+
+def claim_owner(code, token=None):
+    token = token or session.get("access_token")
+    if not token:
+        raise RuntimeError("Authentication required.")
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/claim_webloom_owner",
+        headers=_sb_headers(token),
+        json={"p_code": code},
+        timeout=20,
+    )
+    if not r.ok:
+        raise RuntimeError("Could not claim owner access.")
+    return r.json()
