@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session
+from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session, redirect
 
 from spa_ripper.path_utils import query_variant_relpath
 from spa_ripper.scraper import DEFAULT_USER_AGENT, SpaScraper
@@ -274,6 +274,16 @@ def account_page():
 @app.get("/settings")
 def settings_page():
     return render_template("settings.html")
+
+
+@app.get("/admin")
+def admin_page():
+    ident = current_identity()
+    if not ident:
+        return redirect("/signin?next=/admin")
+    if ident.get("role") != "owner":
+        return redirect("/dashboard")
+    return render_template("admin.html")
 
 
 @app.get("/privacy")
