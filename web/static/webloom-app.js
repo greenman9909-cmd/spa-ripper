@@ -127,8 +127,36 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     const u=await hydrateUser();
     if(!u) return;
     const id=path.split("/")[2];
-    if(!id) return;
     const panel=$("#projectPanel")||$(".preview-box");
+    if(!id){
+      if(!panel) return;
+      try{
+        const d=await json("/api/projects");
+        const projects=d.projects||[];
+        const h=$(".hero-row h1");
+        if(h) h.textContent="Projects";
+        const desc=$(".hero-row p");
+        if(desc) desc.textContent="Every capture, preview and export in one place.";
+        const tabs=$("[data-project-tab]");
+        tabs.forEach(a=>a.style.display="none");
+        if(!projects.length){
+          panel.innerHTML='<div class="project-empty-copy" style="padding:70px 18px"><h3>No projects yet.</h3><p>Your first capture will appear here automatically.</p><a class="btn primary" href="/new">Start a capture →</a></div>';
+          return;
+        }
+        panel.innerHTML='<div class="project-data"><div class="project-data-head"><div><h2>Capture history</h2><p>Open a project to inspect its live preview, files, metadata and exports.</p></div><span class="project-count">'+projects.length+' project'+(projects.length===1?"":"s")+'</span></div><div class="project-list"></div></div>';
+        const list=$(".project-list",panel);
+        projects.forEach(p=>{
+          const row=document.createElement("a");
+          row.className="project-row";
+          row.href="/project/"+p.id;
+          row.innerHTML='<div class="project-favicon">'+hostOf(p.source_url).slice(0,1).toUpperCase()+'</div><div class="project-row-main"><b>'+hostOf(p.source_url)+'</b><span>'+p.source_url+'</span></div><span class="status-pill '+p.status+'">'+p.status+'</span><span class="project-meta">'+(p.file_count||0)+' files · '+fmtBytes(p.byte_count)+'</span><span class="row-arrow">→</span>';
+          list.appendChild(row);
+        });
+      }catch(e){
+        panel.innerHTML='<div class="project-tab-error">'+String(e.message||"Projects could not be loaded.")+'</div>';
+      }
+      return;
+    }
     const tabs=$$("[data-project-tab]");
     const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
     const previewBase="/preview/"+encodeURIComponent(id)+"/";
