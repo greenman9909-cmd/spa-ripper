@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f9ff">
+<meta name="robots" content="noindex">
+<title>WebLoom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0b1739;--muted:#6f7b94;--line:#e4e9f3;--blue:#3268ff;--violet:#6a4cff;--bg:#f6f8fc;--card:#fff;--green:#16a36a;--shadow:0 14px 40px rgba(42,65,120,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button,a{cursor:pointer}a{text-decoration:none;color:inherit}h1,h2,h3,.brand,.money{font-family:"Plus Jakarta Sans","Inter",sans-serif}
+.app-shell{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:252px;background:rgba(255,255,255,.93);backdrop-filter:blur(20px);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;z-index:50}.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.045em;padding:0 10px 22px}.logo{width:33px;height:33px;position:relative}.logo:before,.logo:after{content:"";position:absolute;border-radius:18px;width:21px;height:27px;top:3px}.logo:before{left:2px;background:linear-gradient(145deg,#3e78ff,#7653ff)}.logo:after{right:2px;background:linear-gradient(145deg,#7e63ff,#4b86ff);mix-blend-mode:multiply;opacity:.9}
+.side-section{font-size:10px;font-weight:800;color:#9aa4b8;text-transform:uppercase;letter-spacing:.12em;padding:12px 12px 8px}.navlist{display:grid;gap:5px}.navitem{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;color:#5d6982;font-size:13px;font-weight:650;transition:.18s}.navitem:hover{background:#f3f6ff;color:#24375e}.navitem.active{background:linear-gradient(100deg,#edf3ff,#f1efff);color:#3764e9}.navitem svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;flex:0 0 18px}.side-bottom{margin-top:auto}.plan-mini{border:1px solid #e2e7f2;border-radius:16px;padding:14px;background:linear-gradient(145deg,#fafcff,#f6f4ff)}.plan-mini strong{font-size:13px}.plan-mini p{font-size:11px;color:#7a859c;line-height:1.45;margin:5px 0 11px}
+.main{margin-left:252px;min-height:100vh}.topbar{height:74px;background:rgba(255,255,255,.8);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;position:sticky;top:0;z-index:35}.top-left{display:flex;align-items:center;gap:11px}.mobile-menu{display:none;border:0;background:#f3f6fb;width:38px;height:38px;border-radius:11px;color:#334462}.page-name{font-size:14px;font-weight:750;color:#33425f}.top-actions{display:flex;align-items:center;gap:10px}.avatar{width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#eaf1ff,#ede8ff);color:#5265d8;font-size:12px;font-weight:800;border:1px solid #dfe5f2}
+.content{width:min(1220px,calc(100% - 44px));margin:0 auto;padding:32px 0 60px}.page{display:none}.page.active{display:block;animation:pageIn .45s cubic-bezier(.2,.7,.2,1) both}@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.hero-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:25px}.hero-row h1{margin:0;font-size:32px;letter-spacing:-.045em}.hero-row p{margin:7px 0 0;color:var(--muted);font-size:13px}.btn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 15px;font-weight:750;font-size:13px;color:#33415d;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s}.btn:hover{transform:translateY(-1px);box-shadow:0 10px 25px rgba(47,67,110,.1)}.btn.primary{border:0;color:#fff;background:linear-gradient(100deg,var(--blue),var(--violet));box-shadow:0 10px 24px rgba(73,83,255,.23)}.btn.dark{border-color:#15274c;background:#10203f;color:#fff}.btn.wide{width:100%}.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.grid{display:grid;gap:16px}.grid.three{grid-template-columns:repeat(3,1fr)}.grid.two{grid-template-columns:repeat(2,1fr)}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:21px;box-shadow:var(--shadow)}.card.flat{box-shadow:none}.card h2,.card h3{margin:0;letter-spacing:-.025em}.card h2{font-size:19px}.card h3{font-size:15px}.card p{color:var(--muted);font-size:12px;line-height:1.55}.metric{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.metric-icon{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#edf3ff,#f4eeff);color:#5067ef}.metric-icon svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9}.metric strong{font-family:"Plus Jakarta Sans";font-size:25px;letter-spacing:-.05em}.metric small{display:block;color:#8a95aa;font-size:10px;margin-top:4px}
+.onboard{margin-top:16px;display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.empty{min-height:340px;display:grid;place-items:center;text-align:center;padding:40px}.empty-inner{max-width:460px}.empty-icon{width:62px;height:62px;margin:0 auto 17px;border-radius:19px;background:linear-gradient(145deg,#edf3ff,#f3ecff);display:grid;place-items:center;color:#5367ed}.empty-icon svg{width:27px;height:27px;stroke:currentColor;fill:none;stroke-width:1.8}.empty h2{font-size:22px;margin-bottom:7px}.empty p{margin:0 auto 20px}
+.quick{display:grid;gap:10px;margin-top:14px}.quick a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px;border:1px solid #e8ecf4;border-radius:13px;background:#fff;font-size:12px;font-weight:700;color:#495772}.quick a:hover{border-color:#cad5f0;background:#fafcff}.quick small{color:#9aa4b5;font-weight:500}
+.banner{border:1px solid #dce5ff;border-radius:18px;background:linear-gradient(115deg,#f4f7ff,#f7f3ff);padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:18px}.banner strong{font-family:"Plus Jakarta Sans";font-size:15px}.banner p{margin:5px 0 0;color:#6c7892;font-size:11px}
+.form-card{max-width:850px;margin:auto}.label{display:block;font-size:11px;font-weight:800;color:#4f5c75;margin-bottom:8px}.input{width:100%;border:1px solid #dfe5f0;border-radius:13px;background:#fff;padding:13px 14px;color:#152343;outline:none;transition:.18s}.input:focus{border-color:#9eb3ff;box-shadow:0 0 0 4px rgba(56,102,255,.08)}.url-input{display:flex;align-items:center;gap:10px}.url-input svg{width:20px;height:20px;stroke:#72809d;fill:none;stroke-width:1.9}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.mode{border:1px solid #e0e6f1;border-radius:16px;padding:17px;position:relative;background:#fff}.mode.selected{border-color:#7786ff;box-shadow:0 0 0 3px rgba(76,89,255,.07)}.mode.pro{background:linear-gradient(145deg,#fff,#f8f6ff)}.mode-head{display:flex;justify-content:space-between;gap:12px}.pill{border-radius:999px;padding:6px 9px;background:#eef3ff;color:#3d64e9;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.07em}.pill.pro{background:linear-gradient(90deg,#514cff,#7454ff);color:#fff}.option-list{display:grid;gap:10px;margin:16px 0 0}.opt{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid #edf0f6}.opt:first-child{border-top:0}.opt strong{font-size:12px}.opt span{font-size:10px;color:#8b96aa}.toggle{width:40px;height:22px;border-radius:999px;background:#dce3ee;position:relative}.toggle.on{background:linear-gradient(90deg,#456cff,#6856ff)}.toggle:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;box-shadow:0 2px 6px rgba(0,0,0,.15)}.toggle.on:after{left:21px}
+.tabs{display:flex;gap:5px;padding:5px;background:#f0f3f8;border-radius:13px;width:max-content;margin-bottom:18px;max-width:100%;overflow:auto}.tab{padding:9px 12px;border-radius:9px;font-size:11px;font-weight:750;color:#6f7a91;white-space:nowrap}.tab.active{background:#fff;color:#2d3e5e;box-shadow:0 4px 12px rgba(49,66,100,.09)}.project-top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}.project-title{display:flex;align-items:center;gap:12px}.site-icon{width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#eef4ff,#efebff);display:grid;place-items:center;color:#5367eb}.site-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}.demo-badge{font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.09em;background:#fff6dc;color:#916a00;border:1px solid #f4dfa3;border-radius:999px;padding:6px 8px}
+.preview-box{border:1px solid #e0e6f0;border-radius:18px;overflow:hidden;background:#fff}.browserbar{height:42px;display:flex;align-items:center;gap:9px;padding:0 13px;background:#fafbfe;border-bottom:1px solid #e9edf4;color:#8792a8;font-size:10px}.dots{width:8px;height:8px;border-radius:50%;background:#ff7165;box-shadow:14px 0 #ffc45a,28px 0 #47cb75;margin-right:31px}.fake-site{height:300px;background:linear-gradient(150deg,#0d1831,#17264e 55%,#315ff5);position:relative;overflow:hidden}.fake-site:after{content:"";position:absolute;width:360px;height:360px;border-radius:90px;right:-90px;bottom:-230px;background:linear-gradient(135deg,#79a8ff,#7a50ff);transform:rotate(29deg)}.fake-copy{position:absolute;z-index:2;color:#fff;left:52px;top:86px}.fake-copy strong{font-family:"Plus Jakarta Sans";font-size:36px;display:block;max-width:420px;line-height:1.02;letter-spacing:-.05em}.fake-copy p{font-size:12px;color:#ced8ef;max-width:330px}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:13px 10px;border-bottom:1px solid #edf0f6;font-size:11px}.table th{color:#8a95a9;font-size:9px;text-transform:uppercase;letter-spacing:.07em}.table td{color:#4e5a72}.status{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 8px;background:#eaf9f2;color:#12845b;font-size:9px;font-weight:800}.status:before{content:"";width:6px;height:6px;border-radius:50%;background:#24b87b}
+.price-layout{display:grid;grid-template-columns:1fr 1fr;gap:17px;max-width:900px;margin:auto}.plan{border:1px solid #dfe5f0;background:#fff;border-radius:22px;padding:25px;position:relative;min-height:430px;display:flex;flex-direction:column;box-shadow:var(--shadow)}.plan.pro{border-color:#6672ff;background:linear-gradient(180deg,#fff,#f7f6ff);box-shadow:0 22px 60px rgba(82,81,255,.14)}.plan-tag{position:absolute;right:18px;top:18px;border-radius:999px;padding:7px 10px;background:linear-gradient(90deg,#5262ff,#7451ff);color:#fff;font-size:9px;font-weight:850}.money{font-size:43px;letter-spacing:-.065em;margin:15px 0 2px}.money small{font-family:"Inter";font-size:12px;color:#7c879d;letter-spacing:0}.checks{display:grid;gap:11px;margin:22px 0}.checks div{display:flex;gap:8px;color:#4e5b75;font-size:11px}.checkmark{color:var(--green);font-weight:900}.plan .btn{margin-top:auto}
+.settings{display:grid;grid-template-columns:240px 1fr;gap:18px}.settings-menu{display:grid;gap:5px;align-content:start}.settings-menu a{padding:11px 12px;border-radius:11px;font-size:12px;color:#68748d;font-weight:650}.settings-menu a.active{background:#eef3ff;color:#3864e4}.field{margin-top:16px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.notice{border:1px solid #f0dba1;background:#fff9e9;color:#7c650f;border-radius:13px;padding:12px 14px;font-size:10px;line-height:1.5}
+.auth-shell{min-height:100vh;display:none;grid-template-columns:1fr 1fr;background:#fff}.auth-shell.active{display:grid}.auth-side{position:relative;overflow:hidden;background:linear-gradient(145deg,#101b37,#172753 55%,#5149f7);padding:48px;color:#fff}.auth-side:after{content:"";position:absolute;width:500px;height:500px;border-radius:120px;right:-190px;bottom:-280px;background:linear-gradient(135deg,#76a8ff,#8b58ff);transform:rotate(28deg)}.auth-side .brand{padding:0;color:#fff}.auth-copy{position:relative;z-index:2;margin-top:22vh;max-width:510px}.auth-copy h1{font-size:45px;line-height:1.02;letter-spacing:-.055em;margin:0 0 16px}.auth-copy p{color:#d0d8ed;line-height:1.65}.auth-main{display:grid;place-items:center;padding:35px}.auth-card{width:min(440px,100%)}.auth-card h2{font-size:28px;margin:0 0 8px}.auth-card>p{color:var(--muted);font-size:12px;margin:0 0 24px}.divider{display:flex;align-items:center;gap:12px;color:#a0a9bb;font-size:10px;margin:18px 0}.divider:before,.divider:after{content:"";height:1px;background:#e5e9f1;flex:1}.google{width:100%;background:#fff;border:1px solid #dfe4ed;border-radius:12px;padding:12px;font-weight:700;color:#35415a}.legal{max-width:850px;margin:auto}.legal h1{font-size:34px}.legal h2{font-size:17px;margin-top:28px}.legal p,.legal li{font-size:12px;color:#64718a;line-height:1.75}
+.toast{position:fixed;right:22px;bottom:22px;background:#10203f;color:#fff;border-radius:13px;padding:12px 15px;font-size:11px;font-weight:650;box-shadow:0 14px 34px rgba(17,31,59,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;z-index:100}.toast.show{opacity:1;transform:none}
+@media(max-width:1050px){.grid.three{grid-template-columns:1fr 1fr}.onboard{grid-template-columns:1fr}.price-layout{grid-template-columns:1fr}.settings{grid-template-columns:1fr}.settings-menu{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.sidebar{transform:translateX(-105%);transition:.22s}.sidebar.open{transform:none;box-shadow:20px 0 50px rgba(20,35,68,.18)}.main{margin-left:0}.topbar{padding:0 16px}.mobile-menu{display:grid;place-items:center}.content{width:min(100% - 28px,1220px);padding-top:22px}.grid.three,.grid.two,.modes,.field-row{grid-template-columns:1fr}.hero-row{align-items:flex-start;flex-direction:column}.hero-row .btn{width:100%}.project-top{align-items:flex-start;flex-direction:column}.fake-site{height:240px}.fake-copy{left:28px;top:60px}.fake-copy strong{font-size:29px}.auth-shell.active{grid-template-columns:1fr}.auth-side{display:none}.settings-menu{grid-template-columns:1fr 1fr}.top-actions .btn{display:none}}
+</style>
+</head>
+<body>
+<div class="app-shell" id="appShell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="/"><span class="logo"></span><span>WebLoom</span></a>
+    <div class="navlist">
+      <a class="navitem" data-nav="dashboard" href="/dashboard"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>Overview</a>
+      <a class="navitem" data-nav="new" href="/new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New capture</a>
+      <a class="navitem" data-nav="history" href="/history"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>History</a>
+    </div>
+    <div class="side-section">Account</div>
+    <div class="navlist">
+      <a class="navitem" data-nav="billing" href="/billing"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Plan & billing</a>
+      <a class="navitem" data-nav="settings" href="/settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.4 6A8 8 0 0 0 8 7.1l-2.4-1-2 3.4L5.7 11a7 7 0 0 0 0 2l-2.1 1.5 2 3.4 2.4-1A8 8 0 0 0 10.4 18l.3 2.6h4L15 18a8 8 0 0 0 2.4-1.1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .2-1z"/></svg>Settings</a>
+    </div>
+    <div class="side-bottom">
+      <div class="plan-mini"><strong>Free plan</strong><p>Your account includes one complete website capture.</p><a class="btn primary wide" href="/billing">View Pro</a></div>
+    </div>
+  </aside>
+
+  <main class="main" id="mainShell">
+    <header class="topbar">
+      <div class="top-left"><button class="mobile-menu" id="menuBtn">☰</button><span class="page-name" id="pageName">Overview</span></div>
+      <div class="top-actions"><a class="btn" href="/new">＋ New capture</a><div class="avatar">WL</div></div>
+    </header>
+
+    <div class="content">
+      <section class="page" data-page="dashboard">
+        <div class="hero-row"><div><h1>Your WebLoom workspace</h1><p>Capture, inspect and export public website projects from one place.</p></div><a class="btn primary" href="/new">＋ Start a capture</a></div>
+        <div class="grid three">
+          <article class="card flat metric"><div><small>PLAN</small><strong>Free</strong><small>1 complete clone included</small></div><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V4h8v3"/></svg></span></article>
+          <article class="card flat metric"><div><small>CAPTURES USED</small><strong>0</strong><small>No captures yet</small></div><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></article>
+          <article class="card flat metric"><div><small>PROJECTS</small><strong>0</strong><small>Your saved captures</small></div><span class="metric-icon"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></svg></span></article>
+        </div>
+        <div class="onboard">
+          <article class="card empty"><div class="empty-inner"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 19v2m8-2v2"/><path d="M8 10h8M8 14h5"/></svg></div><h2>Capture your first website</h2><p>Paste a public URL and WebLoom will organize the pages, assets, metadata, links and exportable files it can access.</p><a class="btn primary" href="/new">Start my free clone →</a></div></article>
+          <aside class="card"><h3>Quick start</h3><p>Everything you need to move from URL to project.</p><div class="quick"><a href="/new"><span>New capture</span><small>Paste a URL →</small></a><a href="/project/demo"><span>Preview the project UI</span><small>Demo data →</small></a><a href="/billing"><span>Explore Deep Capture</span><small>Pro features →</small></a></div></aside>
+        </div>
+      </section>
+
+      <section class="page" data-page="new">
+        <div class="hero-row"><div><h1>New capture</h1><p>Choose how deeply WebLoom should inspect a public website.</p></div></div>
+        <article class="card form-card">
+          <label class="label">Website URL</label>
+          <div class="url-input"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></svg><input class="input" placeholder="https://example.com"></div>
+          <div class="modes">
+            <div class="mode selected"><div class="mode-head"><div><h3>Standard Capture</h3><p>Fast capture of publicly accessible website content.</p></div><span class="pill">Free</span></div><div class="checks"><div><span class="checkmark">✓</span>Pages and assets</div><div><span class="checkmark">✓</span>Metadata and internal links</div><div><span class="checkmark">✓</span>Live preview and ZIP export</div></div></div>
+            <div class="mode pro"><div class="mode-head"><div><h3>Deep Capture</h3><p>More complete SPA inspection for complex frontends.</p></div><span class="pill pro">Pro</span></div><div class="checks"><div><span class="checkmark">✓</span>Lazy-loaded SPA chunk discovery</div><div><span class="checkmark">✓</span>Public source-map recovery when exposed</div><div><span class="checkmark">✓</span>Endpoint and technology mapping</div></div></div>
+          </div>
+          <div class="option-list">
+            <div class="opt"><div><strong>Follow internal links</strong><br><span>Discover additional public pages on the same site.</span></div><span class="toggle on"></span></div>
+            <div class="opt"><div><strong>Include assets</strong><br><span>Collect publicly served images, styles, scripts and fonts.</span></div><span class="toggle on"></span></div>
+            <div class="opt"><div><strong>Generate sitemap</strong><br><span>Create sitemap data from discovered public routes.</span></div><span class="toggle on"></span></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:20px"><button class="btn primary" data-toast="Capture processing will be connected to the backend next.">Start capture →</button></div>
+        </article>
+      </section>
+
+      <section class="page" data-page="history">
+        <div class="hero-row"><div><h1>Capture history</h1><p>Your completed and in-progress website captures will appear here.</p></div><a class="btn primary" href="/new">＋ New capture</a></div>
+        <article class="card empty"><div class="empty-inner"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></div><h2>No capture history yet</h2><p>Once you run your first capture, its status, project and export controls will be organized here.</p><a class="btn primary" href="/new">Start your first capture</a></div></article>
+      </section>
+
+      <section class="page" data-page="project">
+        <div class="project-top"><div class="project-title"><span class="site-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 19v2m8-2v2M8 10h8"/></svg></span><div><div style="display:flex;align-items:center;gap:8px"><h1 style="font-size:25px;margin:0">Project preview</h1><span class="demo-badge">Demo data</span></div><p style="margin:5px 0 0;color:#75819a;font-size:11px">This screen demonstrates the finished WebLoom project workspace.</p></div></div><div style="display:flex;gap:9px"><button class="btn" data-toast="Export wiring comes with the capture backend.">Export ZIP</button><a class="btn primary" href="/new">New capture</a></div></div>
+        <div class="tabs"><span class="tab active">Overview</span><span class="tab">Preview</span><span class="tab">Pages</span><span class="tab">Assets</span><span class="tab">Metadata</span><span class="tab">Links</span><span class="tab">Sitemap</span></div>
+        <div class="grid three" style="margin-bottom:16px">
+          <article class="card flat metric"><div><small>PROJECT STATUS</small><strong style="font-size:20px">Ready</strong><small>Demo workspace</small></div><span class="status">Complete</span></article>
+          <article class="card flat metric"><div><small>CAPTURE MODE</small><strong style="font-size:20px">Deep</strong><small>Pro preview</small></div></article>
+          <article class="card flat metric"><div><small>EXPORT</small><strong style="font-size:20px">ZIP</strong><small>Organized files</small></div></article>
+        </div>
+        <article class="card"><div class="preview-box"><div class="browserbar"><span class="dots"></span>https://example.com</div><div class="fake-site"><div class="fake-copy"><strong>Your captured website preview lives here.</strong><p>Inspect the public pages and assets before exporting the project.</p></div></div></div></article>
+      </section>
+
+      <section class="page" data-page="billing">
+        <div class="hero-row"><div><h1>Plan & billing</h1><p>Start with one free capture or unlock WebLoom's deeper workflow.</p></div></div>
+        <div class="price-layout">
+          <article class="plan"><div style="font-size:10px;font-weight:850;letter-spacing:.1em;color:#8691a6;text-transform:uppercase">Current plan</div><h2 style="margin:10px 0 0">Free</h2><div class="money">€0 <small>forever</small></div><p>One complete public website capture with the core WebLoom workflow.</p><div class="checks"><div><span class="checkmark">✓</span>1 complete website capture</div><div><span class="checkmark">✓</span>Live preview</div><div><span class="checkmark">✓</span>Pages, assets, links and metadata</div><div><span class="checkmark">✓</span>Sitemap and ZIP export</div></div><a class="btn dark wide" href="/new">Use my free capture</a></article>
+          <article class="plan pro"><span class="plan-tag">Best value</span><div style="font-size:10px;font-weight:850;letter-spacing:.1em;color:#685ee6;text-transform:uppercase">For regular use</div><h2 style="margin:10px 0 0">WebLoom Pro</h2><div class="money">€2.99 <small>/ month</small></div><p>Unlimited projects plus a deeper capture mode for modern SPA frontends.</p><div class="checks"><div><span class="checkmark">✓</span>Unlimited website captures</div><div><span class="checkmark">✓</span>Deep SPA and lazy-chunk discovery</div><div><span class="checkmark">✓</span>Public source-map recovery when exposed</div><div><span class="checkmark">✓</span>Endpoint and technology mapping</div><div><span class="checkmark">✓</span>Project history and richer exports</div></div><button class="btn primary wide" data-toast="Secure checkout will be connected in the billing build.">Upgrade to Pro →</button></article>
+        </div>
+      </section>
+
+      <section class="page" data-page="settings">
+        <div class="hero-row"><div><h1>Settings</h1><p>Manage your WebLoom account and default capture preferences.</p></div></div>
+        <div class="settings">
+          <nav class="card flat settings-menu"><a class="active">Profile</a><a>Capture defaults</a><a>Account</a></nav>
+          <article class="card"><h2>Profile</h2><p>Your account details will be managed here once authentication is connected.</p><div class="field-row"><div class="field"><label class="label">Display name</label><input class="input" placeholder="Your name"></div><div class="field"><label class="label">Email</label><input class="input" placeholder="you@example.com"></div></div><div class="field"><label class="label">Default capture mode</label><select class="input"><option>Standard Capture</option><option>Deep Capture (Pro)</option></select></div><div class="field"><div class="notice">Account security, sessions and subscription status will be enforced server-side when the authentication and billing layer is connected.</div></div><div style="display:flex;justify-content:flex-end;margin-top:20px"><button class="btn primary" data-toast="Settings persistence will be connected with authentication.">Save settings</button></div></article>
+        </div>
+      </section>
+
+      <section class="page legal" data-page="privacy">
+        <h1>Privacy</h1><div class="notice">Draft product page — finalize this policy before accepting real users or payments.</div><h2>What WebLoom will need to process</h2><p>To provide accounts, subscriptions and website capture projects, WebLoom will need to process account details, subscription state, capture requests and project records. The production policy will specify exact data categories, retention periods and deletion controls once those systems are wired.</p><h2>Website captures</h2><p>WebLoom is intended for publicly accessible website content. Production storage and deletion behavior for captured files will be documented before launch.</p><h2>Payments</h2><p>Payment handling will be provided through a payment processor. WebLoom should not store full payment-card details directly.</p>
+      </section>
+
+      <section class="page legal" data-page="terms">
+        <h1>Terms</h1><div class="notice">Draft product page — finalize the terms before launch.</div><h2>Permitted use</h2><p>WebLoom is intended for capturing publicly accessible website content for legitimate development, backup, migration, analysis and related uses. Users should have the rights or permission needed for the material they capture.</p><h2>Access restrictions</h2><p>The service is not intended to bypass authentication, paywalls, DRM or other technical access controls.</p><h2>Subscriptions</h2><p>Final billing, cancellation and refund terms will be added when the production subscription flow is connected.</p>
+      </section>
+    </div>
+  </main>
+</div>
+
+<section class="auth-shell" id="authShell">
+  <div class="auth-side"><a class="brand" href="/"><span class="logo"></span><span>WebLoom</span></a><div class="auth-copy"><h1>Capture the public web into an organized workspace.</h1><p>Preview pages, inspect assets and metadata, then export the project when you're ready.</p></div></div>
+  <div class="auth-main"><div class="auth-card"><a class="brand" href="/" style="padding:0 0 30px"><span class="logo"></span><span>WebLoom</span></a><h2>Welcome to WebLoom</h2><p>Sign in to manage captures, exports and your plan.</p><button class="google" data-toast="Google sign-in will be connected with authentication.">Continue with Google</button><div class="divider">or</div><label class="label">Email address</label><input class="input" type="email" placeholder="you@example.com"><button class="btn primary wide" style="margin-top:12px" data-toast="Email authentication will be connected next.">Continue with email →</button><p style="text-align:center;margin-top:20px;font-size:10px;color:#929caf">By continuing, you agree to the <a href="/terms" style="text-decoration:underline">Terms</a> and <a href="/privacy" style="text-decoration:underline">Privacy Policy</a>.</p></div></div>
+</section>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var path=location.pathname.replace(/^\/+|\/+$/g,'');
+  var first=path.split('/')[0]||'dashboard';
+  var page=first==='project'?'project':first;
+  var names={dashboard:'Overview',new:'New capture',history:'History',project:'Project',billing:'Plan & billing',settings:'Settings',privacy:'Privacy',terms:'Terms'};
+  if(page==='signin'){
+    document.getElementById('appShell').style.display='none';
+    document.getElementById('authShell').classList.add('active');
+  }else{
+    var target=document.querySelector('[data-page="'+page+'"]')||document.querySelector('[data-page="dashboard"]');
+    target.classList.add('active');
+    var nav=document.querySelector('[data-nav="'+page+'"]');
+    if(nav) nav.classList.add('active');
+    document.getElementById('pageName').textContent=names[page]||'WebLoom';
+  }
+  var menu=document.getElementById('menuBtn');
+  if(menu)menu.addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('open')});
+  var toast=document.getElementById('toast'),timer;
+  document.querySelectorAll('[data-toast]').forEach(function(el){el.addEventListener('click',function(e){e.preventDefault();toast.textContent=el.getAttribute('data-toast');toast.classList.add('show');clearTimeout(timer);timer=setTimeout(function(){toast.classList.remove('show')},2800)})});
+})();
+</script>
+</body>
+</html>
