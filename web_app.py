@@ -11,10 +11,26 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory
+from flask import Flask, abort, jsonify, render_template, request, send_file, send_from_directory, session
 
 from spa_ripper.path_utils import query_variant_relpath
 from spa_ripper.scraper import DEFAULT_USER_AGENT, SpaScraper
+from webloom_integrations import (
+    auth_signup,
+    auth_signin,
+    set_login_session,
+    clear_login_session,
+    current_identity,
+    require_user,
+    require_owner,
+    consume_capture_entitlement,
+    create_project,
+    update_project,
+    list_projects,
+    get_project,
+    set_subscription_state,
+    supabase_ready,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -31,6 +47,23 @@ app = Flask(
     static_url_path="/__spa_ui/static",
 )
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
+app.secret_key = os.environ.get("WEBLOOM_SESSION_SECRET") or os.environ.get("FLASK_SECRET_KEY") or os.urandom(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("WEBLOOM_COOKIE_SECURE", "1") not in {"0","false","False"},
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30,
+)
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PRO_PRICE_ID = os.environ.get("STRIPE_PRO_PRICE_ID", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+PUBLIC_APP_URL = os.environ.get("WEBLOOM_PUBLIC_URL", "").rstrip("/")
+SPA_REKT_INTERNAL_URL = os.environ.get("SPA_REKT_INTERNAL_URL", "").rstrip("/")
+SPA_REKT_INTERNAL_TOKEN = os.environ.get("SPA_REKT_INTERNAL_TOKEN", "")
+SPA_REKT_ALLOWED_HOSTS = {
+    h.strip().lower() for h in os.environ.get("SPA_REKT_ALLOWED_HOSTS", "").split(",") if h.strip()
+}
 
 _jobs = {}
 _jobs_lock = threading.Lock()
@@ -157,6 +190,17 @@ def run_job(job_id):
             job["bytes"] = scraper.total_bytes
             job["failed"] = len(scraper.failed_urls)
             job["finished_at"] = time.time()
+        if supabase_ready():
+            update_project(
+                job_id,
+                status="done",
+                file_count=scraper.processed_count,
+                byte_count=scraper.total_bytes,
+                failed_count=len(scraper.failed_urls),
+                preview_path=f"/preview/{job_id}/",
+                archive_path=f"/api/jobs/{job_id}/download",
+                finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            )
 
     except Exception as exc:
         writer.write(f"\n[!] {exc}\n")
@@ -165,6 +209,13 @@ def run_job(job_id):
             job["status"] = "error"
             job["error"] = str(exc)
             job["finished_at"] = time.time()
+        if supabase_ready():
+            update_project(
+                job_id,
+                status="error",
+                error=str(exc),
+                finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            )
 
 
 @app.get("/")
@@ -237,10 +288,170 @@ def terms_page():
 
 @app.get("/api/health")
 def health():
-    return jsonify({"ok": True, "service": "SPA-Ripper Web"})
+    return jsonify({
+        "ok": True,
+        "service": "WebLoom",
+        "supabase": supabase_ready(),
+        "stripe": bool(STRIPE_SECRET_KEY and STRIPE_PRO_PRICE_ID),
+    })
+
+
+@app.post("/api/auth/signup")
+def api_signup():
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    if "@" not in email or len(password) < 8:
+        return jsonify({"ok": False, "error": "Use a valid email and a password with at least 8 characters."}), 400
+    try:
+        data = auth_signup(email, password)
+        if data.get("access_token"):
+            profile = set_login_session(data)
+            return jsonify({"ok": True, "profile": profile, "redirect": "/dashboard"})
+        return jsonify({"ok": True, "confirmation_required": True})
+    except (ValueError, RuntimeError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
+@app.post("/api/auth/signin")
+def api_signin():
+    payload = request.get_json(silent=True) or {}
+    try:
+        profile = set_login_session(auth_signin(payload.get("email",""), payload.get("password","")))
+        return jsonify({"ok": True, "profile": profile, "redirect": "/dashboard"})
+    except (ValueError, RuntimeError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 401
+
+
+@app.post("/api/auth/signout")
+def api_signout():
+    clear_login_session()
+    return jsonify({"ok": True})
+
+
+@app.get("/api/me")
+def api_me():
+    ident = current_identity()
+    if not ident:
+        return jsonify({"authenticated": False}), 200
+    return jsonify({"authenticated": True, "user": ident})
+
+
+@app.get("/api/projects")
+@require_user
+def api_projects():
+    return jsonify({"projects": list_projects(request.webloom_user["id"])})
+
+
+@app.get("/api/projects/<project_id>")
+@require_user
+def api_project(project_id):
+    project = get_project(request.webloom_user["id"], project_id)
+    if not project:
+        abort(404)
+    return jsonify({"project": project})
+
+
+@app.post("/api/billing/checkout")
+@require_user
+def api_billing_checkout():
+    if not STRIPE_SECRET_KEY or not STRIPE_PRO_PRICE_ID:
+        return jsonify({"ok": False, "error": "Billing is not configured yet."}), 503
+    import stripe
+    stripe.api_key = STRIPE_SECRET_KEY
+    user = request.webloom_user
+    base = PUBLIC_APP_URL or request.host_url.rstrip("/")
+    session_obj = stripe.checkout.Session.create(
+        mode="subscription",
+        line_items=[{"price": STRIPE_PRO_PRICE_ID, "quantity": 1}],
+        customer=user.get("stripe_customer_id") or None,
+        customer_email=None if user.get("stripe_customer_id") else user.get("email"),
+        success_url=f"{base}/billing?checkout=success",
+        cancel_url=f"{base}/pricing?checkout=cancelled",
+        client_reference_id=user["id"],
+        metadata={"webloom_user_id": user["id"]},
+        subscription_data={"metadata": {"webloom_user_id": user["id"]}},
+        allow_promotion_codes=True,
+    )
+    return jsonify({"ok": True, "url": session_obj.url})
+
+
+@app.post("/api/billing/portal")
+@require_user
+def api_billing_portal():
+    if not STRIPE_SECRET_KEY:
+        return jsonify({"ok": False, "error": "Billing is not configured yet."}), 503
+    customer = request.webloom_user.get("stripe_customer_id")
+    if not customer:
+        return jsonify({"ok": False, "error": "No billing profile exists yet."}), 400
+    import stripe
+    stripe.api_key = STRIPE_SECRET_KEY
+    base = PUBLIC_APP_URL or request.host_url.rstrip("/")
+    portal = stripe.billing_portal.Session.create(customer=customer, return_url=f"{base}/billing")
+    return jsonify({"ok": True, "url": portal.url})
+
+
+@app.post("/api/stripe/webhook")
+def api_stripe_webhook():
+    if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:
+        return jsonify({"ok": False}), 503
+    import stripe
+    stripe.api_key = STRIPE_SECRET_KEY
+    signature = request.headers.get("Stripe-Signature", "")
+    try:
+        event = stripe.Webhook.construct_event(request.get_data(), signature, STRIPE_WEBHOOK_SECRET)
+    except Exception:
+        return jsonify({"ok": False}), 400
+
+    obj = event["data"]["object"]
+    event_type = event["type"]
+    user_id = None
+    customer_id = obj.get("customer")
+    subscription_id = obj.get("subscription") or (obj.get("id") if event_type.startswith("customer.subscription.") else None)
+    status = None
+
+    if event_type == "checkout.session.completed":
+        user_id = (obj.get("metadata") or {}).get("webloom_user_id") or obj.get("client_reference_id")
+        status = "active" if obj.get("mode") == "subscription" else None
+    elif event_type.startswith("customer.subscription."):
+        user_id = (obj.get("metadata") or {}).get("webloom_user_id")
+        status = obj.get("status")
+        customer_id = obj.get("customer")
+        subscription_id = obj.get("id")
+
+    if user_id and status:
+        set_subscription_state(user_id, customer_id, subscription_id, status)
+    return jsonify({"received": True})
+
+
+@app.post("/api/admin/rekt")
+@require_owner
+def api_admin_rekt():
+    if not SPA_REKT_INTERNAL_URL or not SPA_REKT_INTERNAL_TOKEN:
+        return jsonify({"ok": False, "error": "Private SPA-REKT service is not configured."}), 503
+    payload = request.get_json(silent=True) or {}
+    try:
+        target = normalize_target(payload.get("url",""))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    host = (urlparse(target).hostname or "").lower()
+    if SPA_REKT_ALLOWED_HOSTS and host not in SPA_REKT_ALLOWED_HOSTS:
+        return jsonify({"ok": False, "error": "That host is not on the owner audit allowlist."}), 403
+    r = requests.post(
+        f"{SPA_REKT_INTERNAL_URL}/scan",
+        headers={"Authorization": f"Bearer {SPA_REKT_INTERNAL_TOKEN}"},
+        json={"url": target, "authorized": True},
+        timeout=120,
+    )
+    try:
+        body = r.json()
+    except Exception:
+        body = {"output": r.text[:10000]}
+    return jsonify({"ok": r.ok, "result": body}), r.status_code
 
 
 @app.post("/api/clone")
+@require_user
 def clone():
     payload = request.get_json(silent=True) or {}
     try:
@@ -248,7 +459,21 @@ def clone():
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
-    job_id = uuid.uuid4().hex[:12]
+    if not supabase_ready():
+        return jsonify({"ok": False, "error": "Database/auth service is not configured yet."}), 503
+    try:
+        entitlement = consume_capture_entitlement(request.webloom_user["id"])
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 503
+    if not entitlement.get("allowed"):
+        return jsonify({"ok": False, "error": "Your free capture has been used. Upgrade to Pro to continue.", "upgrade_required": True}), 402
+
+    job_id = str(uuid.uuid4())
+    try:
+        create_project(request.webloom_user["id"], job_id, target)
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 503
+
     job = {
         "id": job_id,
         "url": target,
@@ -260,6 +485,7 @@ def clone():
         "failed": 0,
         "error": None,
         "log": "",
+        "user_id": request.webloom_user["id"],
     }
 
     with _jobs_lock:
@@ -270,26 +496,33 @@ def clone():
 
 
 @app.get("/api/jobs")
+@require_user
 def jobs():
     with _jobs_lock:
-        items = sorted(_jobs.values(), key=lambda item: item["created_at"], reverse=True)[:20]
+        items = [
+            item for item in _jobs.values()
+            if item.get("user_id") == request.webloom_user["id"]
+        ]
+        items = sorted(items, key=lambda item: item["created_at"], reverse=True)[:20]
         return jsonify({"jobs": [job_public(item) for item in items]})
 
 
 @app.get("/api/jobs/<job_id>")
+@require_user
 def job_status(job_id):
     with _jobs_lock:
         job = _jobs.get(job_id)
-        if not job:
+        if not job or job.get("user_id") != request.webloom_user["id"]:
             abort(404)
         return jsonify({"job": job_public(job)})
 
 
 @app.get("/api/jobs/<job_id>/download")
+@require_user
 def job_download(job_id):
     with _jobs_lock:
         job = _jobs.get(job_id)
-        if not job or job["status"] != "done":
+        if not job or job.get("user_id") != request.webloom_user["id"] or job["status"] != "done":
             abort(404)
 
     base = JOB_ROOT / job_id
