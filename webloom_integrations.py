@@ -277,23 +277,65 @@ def require_owner(fn):
     return wrapped
 
 
-def begin_capture(project_id, source_url, network_hash=None, token=None):
+def consume_capture_entitlement(trial_key, network_key=None, token=None):
     token = token or _session_token()
     if not token:
         raise RuntimeError("No WebLoom session is available.")
     r = requests.post(
-        f"{SUPABASE_URL}/rest/v1/rpc/begin_capture",
+        f"{SUPABASE_URL}/rest/v1/rpc/consume_capture_entitlement",
         headers=_sb_headers(token),
         json={
-            "p_project_id": project_id,
-            "p_source_url": source_url,
-            "p_network_hash": network_hash,
+            "p_trial_key": trial_key,
+            "p_network_key": network_key,
         },
         timeout=20,
     )
     if not r.ok:
-        raise RuntimeError(_auth_error(r, "Could not start capture."))
+        raise RuntimeError(_auth_error(r, "Could not verify capture entitlement."))
     return r.json()
+
+
+def create_project(user_id, project_id, source_url, token=None):
+    token = token or _session_token()
+    if not token:
+        raise RuntimeError("No WebLoom session is available.")
+    try:
+        from urllib.parse import urlparse
+        hostname = urlparse(source_url).hostname or ""
+    except Exception:
+        hostname = ""
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/projects",
+        headers={**_sb_headers(token), "Prefer": "return=representation"},
+        json={
+            "id": project_id,
+            "user_id": user_id,
+            "source_url": source_url,
+            "hostname": hostname,
+            "status": "queued",
+            "engine": "webloom-standard",
+        },
+        timeout=20,
+    )
+    if not r.ok:
+        raise RuntimeError(_auth_error(r, "Could not create project."))
+    rows = r.json()
+    if isinstance(rows, list):
+        return rows[0] if rows else {}
+    return rows or {}
+
+
+def restore_free_capture(trial_key, token=None):
+    token = token or _session_token()
+    if not token:
+        return False
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/restore_free_capture",
+        headers=_sb_headers(token),
+        json={"p_trial_key": trial_key},
+        timeout=20,
+    )
+    return r.ok
 
 
 def update_project(project_id, token=None, **fields):
@@ -426,19 +468,6 @@ def storage_download(object_path, token=None):
     if not r.ok:
         return None
     return r.content, r.headers.get("content-type") or "application/octet-stream"
-
-
-def restore_failed_free_capture(project_id, token=None):
-    token = token or _session_token()
-    if not token:
-        return False
-    r = requests.post(
-        f"{SUPABASE_URL}/rest/v1/rpc/restore_failed_free_capture",
-        headers=_sb_headers(token),
-        json={"p_project_id": project_id},
-        timeout=20,
-    )
-    return r.ok and bool(r.json())
 
 
 def claim_owner(code, token=None):
