@@ -218,3 +218,52 @@ def set_subscription_state(user_id, customer_id, subscription_id, status):
         timeout=20,
     )
     return r.ok
+
+
+STORAGE_BUCKET = os.environ.get("WEBLOOM_STORAGE_BUCKET", "webloom-projects")
+
+def storage_upload_bytes(object_path, data, content_type="application/octet-stream"):
+    if not supabase_ready():
+        raise RuntimeError("Supabase is not configured.")
+    clean = object_path.lstrip("/")
+    r = requests.post(
+        f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{clean}",
+        headers={
+            **_sb_headers(service=True),
+            "Content-Type": content_type,
+            "x-upsert": "true",
+        },
+        data=data,
+        timeout=60,
+    )
+    if not r.ok:
+        raise RuntimeError(f"Storage upload failed for {clean}: {r.text[:200]}")
+    return clean
+
+def storage_upload_file(object_path, file_path, content_type="application/octet-stream"):
+    with open(file_path, "rb") as fh:
+        return storage_upload_bytes(object_path, fh.read(), content_type)
+
+def storage_download(object_path):
+    if not supabase_ready():
+        raise RuntimeError("Supabase is not configured.")
+    clean = object_path.lstrip("/")
+    r = requests.get(
+        f"{SUPABASE_URL}/storage/v1/object/authenticated/{STORAGE_BUCKET}/{clean}",
+        headers=_sb_headers(service=True),
+        timeout=60,
+    )
+    if not r.ok:
+        return None
+    return r.content, r.headers.get("content-type") or "application/octet-stream"
+
+def storage_delete_prefix(paths):
+    if not paths:
+        return True
+    r = requests.delete(
+        f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}",
+        headers=_sb_headers(service=True),
+        json={"prefixes": [p.lstrip("/") for p in paths]},
+        timeout=60,
+    )
+    return r.ok
