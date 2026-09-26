@@ -184,6 +184,11 @@ def signup_page():
     return render_template("signup.html")
 
 
+@app.get("/forgot")
+def forgot_page():
+    return render_template("forgot.html")
+
+
 @app.get("/dashboard")
 def dashboard_page():
     return render_template("dashboard.html")
@@ -198,6 +203,11 @@ def new_capture_page():
 @app.get("/project/<project_id>")
 def project_page(project_id=None):
     return render_template("project.html")
+
+
+@app.get("/pricing")
+def pricing_page():
+    return render_template("pricing.html")
 
 
 @app.get("/billing")
