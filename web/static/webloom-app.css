@@ -197,3 +197,8 @@ background-size:24px 24px,24px 24px,auto}
 
 .mini-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#eef3ff,#f5efff);color:#5267df;border:1px solid #e5eaf4}
 .mini-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.capture-error{margin-top:14px;padding:12px 13px;border:1px solid #f1d2d8;border-radius:12px;background:#fff7f8;color:#a93d50;font-size:11px;line-height:1.5;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.capture-error[hidden]{display:none}
+.capture-error a{font-weight:800;color:#4b63db;white-space:nowrap}
+.notice.error{background:#fff7f8;color:#a33f50;border-color:#efd7dc}
