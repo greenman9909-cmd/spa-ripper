@@ -11,4 +11,7 @@ frontend/
 ani.pm_frontend/
 *.log
 .DS_Store
-web_jobs/\n
+web_jobs/
+.env
+.env.*
+!.env.example
