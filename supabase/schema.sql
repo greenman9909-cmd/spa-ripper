@@ -4,6 +4,8 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text unique,
+  display_name text,
+  settings jsonb not null default '{"capture_mode":"standard","export_format":"zip","project_naming":"hostname"}'::jsonb,
   role text not null default 'user' check (role in ('user','owner')),
   plan text not null default 'free' check (plan in ('free','pro')),
   free_capture_used boolean not null default false,
