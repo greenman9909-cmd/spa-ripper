@@ -39,7 +39,7 @@ document.querySelectorAll('.reveal').forEach(el=>io?io.observe(el):el.classList.
     try{
       const d = await json("/api/me");
       if(!d.authenticated){
-        if(/^\/(dashboard|new|project|billing|account|settings|admin)/.test(path)) goSignin();
+        if(/^\/(dashboard|project|billing|account|settings|admin)/.test(path)) goSignin();
         return null;
       }
       const u=d.user||{};
